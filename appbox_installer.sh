@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Appbox installer for VNC webui over SSL, radarr, sonarr, lidarr, bazarr, flexget, filebot, couchpotato, sickchill, medusa, lazylibrarian, nzbget, sabnzbdplus, ombi, jackett, synclounge, nzbhydra2, & ngpost.
+# Appbox installer
 #
 # Just run this on your Ubuntu VNC app via SSH or in the terminal (Applications > Terminal Emulator) using:
-# sudo bash -c "bash <(curl -Ls https://gist.github.com/coder8338/a614f156c916b35becf11c53352b499a/raw)"
+# sudo bash -c "bash <(curl -Ls https://raw.githubusercontent.com/coder8338/appbox_installer/main/appbox_installer.sh)"
 #
-# I do not work for appbox, just a friendly user helping others out, I will try to keep this as update to date as possible!
+# We not work for appbox, we're a friendly community helping others out, we will try to keep this as update to date as possible!
 
 set -e
 set -u
@@ -674,6 +674,48 @@ EOF
     Installation sucessful! Please launch ngpost using the icon on your desktop."
 }
 
+setup_pyload() {
+    mkdir -p /opt/pyload && cd /opt/pyload
+    rm -f /config/pyload.pid
+    supervisorctl stop pyload || true
+    apt install -y git python python-crypto python-pycurl python-pil tesseract-ocr libtesseract-dev python-qt4 python-jinja2 libmozjs-52-0 libmozjs-52-dev
+    ln -sf /usr/bin/js52 /usr/bin/js
+    git clone -b stable https://github.com/pyload/pyload.git /opt/pyload
+    echo "/home/appbox/.config/pyload" > /opt/pyload/module/config/configdir
+    if  [ ! -f "/home/appbox/.config/pyload/files.db" ] || [ ! -f "/home/appbox/.config/pyload/files.version" ] || [ ! -f "/home/appbox/.config/pyload/plugin.conf" ] || [ ! -f "/home/appbox/.config/pyload/pyload.conf" ]
+        then
+        mkdir -p /home/appbox/.config/pyload
+        chmod 777 /home/appbox/.config/pyload
+        wget -O /home/appbox/.config/pyload/files.db https://raw.githubusercontent.com/Cobraeti/docker-pyload/master/config/files.db
+        wget -O /home/appbox/.config/pyload/files.version https://raw.githubusercontent.com/Cobraeti/docker-pyload/master/config/files.version
+        wget -O /home/appbox/.config/pyload/plugin.conf https://raw.githubusercontent.com/Cobraeti/docker-pyload/master/config/plugin.conf
+        wget -O /home/appbox/.config/pyload/pyload.conf https://raw.githubusercontent.com/Cobraeti/docker-pyload/master/config/pyload.conf
+
+        sed -i 's#"Path Prefix" =#"Path Prefix" = /pyload#g' /home/appbox/.config/pyload/pyload.conf
+        sed -i 's#/downloads#/home/appbox/Downloads/#g' /home/appbox/.config/pyload/pyload.conf
+    fi
+    chown -R appbox:appbox /home/appbox/.config/pyload
+    chown -R appbox:appbox /opt/pyload
+
+    cat << EOF > /etc/supervisor/conf.d/pyload.conf
+[program:pyload]
+command=/bin/su -s /bin/bash -c "/usr/bin/python /opt/pyload/pyLoadCore.py" appbox
+autostart=true
+autorestart=true
+priority=5
+stdout_events_enabled=true
+stderr_events_enabled=true
+stdout_logfile=/tmp/pyload.log
+stdout_logfile_maxbytes=0
+stderr_logfile=/tmp/pyload.log
+stderr_logfile_maxbytes=0
+EOF
+    configure_nginx 'pyload' '8000'
+    echo -e "\n\n\n\n\n
+    The default user for pyload is: admin
+    The default password for pyload is: pyload"
+}
+
 install_prompt() {
     echo "Welcome to the install script, please select one of the following options to install:
     
@@ -772,6 +814,10 @@ install_prompt() {
         18|ngpost)
             echo "Setting up ngpost.."
             setup_ngpost
+            ;;
+        19|pyload)
+            echo "Setting up pyload.."
+            setup_pyload
             ;;
         *) 
             echo "Sorry, that option doesn't exist, please try again!"
