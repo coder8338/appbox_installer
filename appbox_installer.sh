@@ -737,6 +737,7 @@ install_prompt() {
     16) lazylibrarian
     17) nzbhydra2
     18) ngpost
+    19) pyload
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
