@@ -772,7 +772,7 @@ install_prompt() {
             echo "Setting up nzbget.."
             setup_nzbget
             ;;
-        8|nzbget)
+        8|sabnzbdplus)
             echo "Setting up sabnzbdplus.."
             setup_sabnzbdplus
             ;;
