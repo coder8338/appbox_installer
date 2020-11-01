@@ -187,7 +187,7 @@ setup_bazarr() {
     apt update
     apt -y install git-core python3-pip python3-distutils python3.7 || true
     cd /opt
-    git clone https://github.com/morpheus65535/bazarr.git
+    git clone --depth 1 https://github.com/morpheus65535/bazarr.git
     cd /opt/bazarr
     pip install -r requirements.txt
     chown -R appbox:appbox /opt
@@ -310,7 +310,7 @@ setup_couchpotato() {
     supervisorctl stop couchpotato || true
     apt-get install python git -y || true
     mkdir /opt/couchpotato && cd /opt/couchpotato
-    git clone https://github.com/RuudBurger/CouchPotatoServer.git
+    git clone --depth 1 https://github.com/RuudBurger/CouchPotatoServer.git
     cat << EOF > /etc/default/couchpotato
 CP_USER=appbox
 CP_HOME=/opt/couchpotato/CouchPotatoServer
@@ -348,7 +348,7 @@ EOF
 setup_sickchill() {
     supervisorctl stop sickchill || true
     apt install -y git unrar-free git openssl libssl-dev python2.7 mediainfo || true
-    git clone https://github.com/SickChill/SickChill.git /home/appbox/sickchill
+    git clone --depth 1 https://github.com/SickChill/SickChill.git /home/appbox/sickchill
     cp /home/appbox/sickchill/runscripts/init.ubuntu /etc/init.d/sickchill
     chmod +x /etc/init.d/sickchill
     sed -i 's/--daemon//g' /etc/init.d/sickchill
@@ -384,7 +384,7 @@ EOF
 setup_medusa() {
     supervisorctl stop medusa || true
     apt install -y git unrar-free git openssl libssl-dev python3-pip python3-distutils python3.7 mediainfo || true
-    git clone https://github.com/pymedusa/Medusa.git /home/appbox/medusa
+    git clone --depth 1 https://github.com/pymedusa/Medusa.git /home/appbox/medusa
     cp /home/appbox/medusa/runscripts/init.ubuntu /etc/init.d/medusa
     chmod +x /etc/init.d/medusa
     sed -i 's/--daemon//g' /etc/init.d/medusa
@@ -421,7 +421,7 @@ EOF
 setup_lazylibrarian() {
     supervisorctl stop lazylibrarian || true
     apt install -y git unrar-free git openssl libssl-dev python3-pip python3-distutils python3.7 mediainfo || true
-    git clone https://gitlab.com/LazyLibrarian/LazyLibrarian.git /home/appbox/lazylibrarian
+    git clone --depth 1 https://gitlab.com/LazyLibrarian/LazyLibrarian.git /home/appbox/lazylibrarian
     cp /home/appbox/lazylibrarian/init/lazylibrarian.initd /etc/init.d/lazylibrarian
     chmod +x /etc/init.d/lazylibrarian
     sed -i 's/--daemon//g' /etc/init.d/lazylibrarian
@@ -568,7 +568,7 @@ setup_synclounge() {
     supervisorctl stop synclounge_server || true
     supervisorctl stop synclounge || true
     apt install -y git npm
-    git clone https://github.com/samcm/SyncLounge /opt/synclounge
+    git clone --depth 1 https://github.com/samcm/SyncLounge /opt/synclounge
     cd /opt/synclounge
     npm install
     sed -i 's@"webroot": ""@"webroot": "/synclounge"@g' /opt/synclounge/settings.json
@@ -680,7 +680,7 @@ setup_pyload() {
     supervisorctl stop pyload || true
     apt install -y git python python-crypto python-pycurl python-pil tesseract-ocr libtesseract-dev python-qt4 python-jinja2 libmozjs-52-0 libmozjs-52-dev
     ln -sf /usr/bin/js52 /usr/bin/js
-    git clone -b stable https://github.com/pyload/pyload.git /opt/pyload
+    git clone --depth 1 -b stable https://github.com/pyload/pyload.git /opt/pyload
     echo "/home/appbox/.config/pyload" > /opt/pyload/module/config/configdir
     if  [ ! -f "/home/appbox/.config/pyload/files.db" ] || [ ! -f "/home/appbox/.config/pyload/files.version" ] || [ ! -f "/home/appbox/.config/pyload/plugin.conf" ] || [ ! -f "/home/appbox/.config/pyload/pyload.conf" ]
         then
