@@ -459,7 +459,9 @@ setup_nzbget() {
     mkdir /tmp/nzbget
     wget -O /tmp/nzbget/nzbget.run https://nzbget.net/download/nzbget-latest-bin-linux.run
     chown appbox:appbox /tmp/nzbget/nzbget.run
-    /bin/su -s /bin/bash -c "sh /tmp/nzbget/nzbget.run" appbox
+    mkdir -p /opt/nzbget
+    chown appbox:appbox /opt/nzbget
+    /bin/su -s /bin/bash -c "sh /tmp/nzbget/nzbget.run --destdir /opt/nzbget" appbox
     rm -rf /tmp/nzbget
     cat << EOF > /etc/supervisor/conf.d/nzbget.conf
 [program:nzbget]
