@@ -349,7 +349,7 @@ setup_sickchill() {
     supervisorctl stop sickchill || true
     apt install -y git unrar-free git openssl libssl-dev python2.7 mediainfo || true
     git clone --depth 1 https://github.com/SickChill/SickChill.git /home/appbox/sickchill
-    cp /home/appbox/sickchill/runscripts/init.ubuntu /etc/init.d/sickchill
+    cp /home/appbox/sickchill/contrib/runscripts/init.ubuntu /etc/init.d/sickchill
     chmod +x /etc/init.d/sickchill
     sed -i 's/--daemon//g' /etc/init.d/sickchill
     cat << EOF > /etc/default/sickchill
