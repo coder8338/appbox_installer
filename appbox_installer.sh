@@ -73,12 +73,10 @@ configure_nginx() {
     \e[4mhttps://${HOSTNAME}/${NAME}\e[39m\e[0m
     
     You can continue the configuration from there.
-
     \e[96mMake sure you protect the app by setting up and username/password in the app's settings!\e[39m
     
     \e[91mIf you want to use another appbox app in the settings of ${NAME}, make sure you access it on port 80, and without https, for example:
     \e[4mhttp://rutorrent.${APPBOX_USER}.appboxes.co\e[39m\e[0m
-
     \e[95mIf you want to access Plex from one of these installed apps use port 32400 for example:
     \e[4mhttp://plex.${APPBOX_USER}.appboxes.co:32400\e[39m\e[0m
     
@@ -87,23 +85,26 @@ configure_nginx() {
 
 setup_radarr() {
     supervisorctl stop radarr || true
+	wget https://packages.microsoft.com/config/ubuntu/18.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+    dpkg -i packages-microsoft-prod.deb
+	rm -f packages-microsoft-prod.deb
     apt update
-    apt -y install libmediainfo0v5 || true
+    apt -y install dotnet-runtime-3.1 libmediainfo0v5 || true
     cd /opt
-    curl -L -O $( curl -s https://api.github.com/repos/Radarr/Radarr/releases | grep linux.tar.gz | grep browser_download_url | head -1 | cut -d \" -f 4 )
-    tar -xvzf Radarr.develop.*.linux.tar.gz
-    rm -f Radarr.develop.*.linux.tar.gz
+    curl -L -O $( curl -s https://api.github.com/repos/Radarr/Radarr/releases | grep linux-core-x64.tar.gz | grep browser_download_url | head -1 | cut -d \" -f 4 )
+    tar -xvzf Radarr.master.*.linux-core-x64.tar.gz
+    rm -f Radarr.master.*.linux-core-x64.tar.gz
     chown -R appbox:appbox /opt
     # Generate config
-    /bin/su -s /bin/bash -c "/usr/bin/mono --debug /opt/Radarr/Radarr.exe -nobrowser" appbox &
+    /bin/su -s /bin/bash -c "/opt/Radarr/Radarr" appbox &
     until grep -q 'UrlBase' /home/appbox/.config/Radarr/config.xml; do
         sleep 1
     done
-    kill -9 $(ps aux | grep 'mono' | grep 'Radarr.exe' | grep -v 'bash' | awk '{print $2}')
+    kill -9 $(ps aux | grep 'Radarr' | grep -v 'bash' | awk '{print $2}')
     sed -i 's@<UrlBase></UrlBase>@<UrlBase>/radarr</UrlBase>@g' /home/appbox/.config/Radarr/config.xml
 cat << EOF > /etc/supervisor/conf.d/radarr.conf
 [program:radarr]
-command=/bin/su -s /bin/bash -c "rm /home/appbox/.config/Radarr/nzbdrone.pid; /usr/bin/mono --debug /opt/Radarr/Radarr.exe -nobrowser" appbox
+command=/bin/su -s /bin/bash -c "rm /home/appbox/.config/Radarr/radarr.pid; /opt/Radarr/Radarr" appbox
 autostart=true
 autorestart=true
 priority=5
