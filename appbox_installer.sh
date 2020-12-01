@@ -23,9 +23,7 @@ install_nginx() {
     echo -n "Checking if nginx is installed: "
     if [ -f /etc/nginx/sites-enabled/default ]; then
         echo "[ YES ]"
-        if ! grep -q "proxy_set_header" /etc/nginx/sites-enabled/default; then
-            sed -i '/server_name _/a \ \n\ \ \ \ \ \ \ \ proxy_set_header X-Real-IP $remote_addr;\n\ \ \ \ \ \ \ \ proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n\ \ \ \ \ \ \ \ proxy_set_header X-Forwarded-Server $host;\n\ \ \ \ \ \ \ \ proxy_set_header X-Forwarded-Port 443;\n\ \ \ \ \ \ \ \ proxy_set_header X-Forwarded-Proto https;\n\ \ \ \ \ \ \ \ proxy_http_version 1.1;\n\ \ \ \ \ \ \ \ proxy_set_header Upgrade $http_upgrade;\n\ \ \ \ \ \ \ \ proxy_set_header Connection $http_connection;\n\ \ \ \ \ \ \ \ proxy_set_header Host $host;\n\ \ \ \ \ \ \ \ proxy_cache_bypass $http_upgrade;\n\ \ \ \ \ \ \ \ proxy_set_header X-Forwarded-Host $http_host:443;\n\ \ \ \ \ \ \ \ proxy_connect_timeout 300s;\n\ \ \ \ \ \ \ \ proxy_read_timeout 300s;\n\ \ \ \ \ \ \ \ client_header_timeout 300s;\n\ \ \ \ \ \ \ \ client_body_timeout 300s;\n\ \ \ \ \ \ \ \ client_max_body_size 1000M;\n\ \ \ \ \ \ \ \ send_timeout 300s;' /etc/nginx/sites-enabled/default
-        fi
+        add_proxy_headers
     else
         if which nginx; then
             echo "[ YES ]"
@@ -37,9 +35,7 @@ install_nginx() {
         echo "Installing nginx"
         apt update
         apt install -y nginx openssl || true
-        if ! grep -q "proxy_set_header" /etc/nginx/sites-enabled/default; then
-            sed -i '/server_name _/a \ \n\ \ \ \ \ \ \ \ proxy_set_header X-Real-IP $remote_addr;\n\ \ \ \ \ \ \ \ proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n\ \ \ \ \ \ \ \ proxy_set_header X-Forwarded-Server $host;\n\ \ \ \ \ \ \ \ proxy_set_header X-Forwarded-Port 443;\n\ \ \ \ \ \ \ \ proxy_set_header X-Forwarded-Proto https;\n\ \ \ \ \ \ \ \ proxy_http_version 1.1;\n\ \ \ \ \ \ \ \ proxy_set_header Upgrade $http_upgrade;\n\ \ \ \ \ \ \ \ proxy_set_header Connection $http_connection;\n\ \ \ \ \ \ \ \ proxy_set_header Host $host;\n\ \ \ \ \ \ \ \ proxy_cache_bypass $http_upgrade;\n\ \ \ \ \ \ \ \ proxy_set_header X-Forwarded-Host $http_host:443;\n\ \ \ \ \ \ \ \ proxy_connect_timeout 300s;\n\ \ \ \ \ \ \ \ proxy_read_timeout 300s;\n\ \ \ \ \ \ \ \ client_header_timeout 300s;\n\ \ \ \ \ \ \ \ client_body_timeout 300s;\n\ \ \ \ \ \ \ \ client_max_body_size 1000M;\n\ \ \ \ \ \ \ \ send_timeout 300s;' /etc/nginx/sites-enabled/default
-        fi
+        add_proxy_headers
     fi
     if [ ! -f /etc/supervisor/conf.d/nginx.conf ]; then
     cat << EOF > /etc/supervisor/conf.d/nginx.conf
@@ -55,6 +51,35 @@ stdout_logfile_maxbytes=0
 stderr_logfile=/tmp/nginx.log
 stderr_logfile_maxbytes=0
 EOF
+    fi
+}
+
+add_proxy_headers() {
+    if ! grep -q "proxy_set_header" /etc/nginx/sites-enabled/default; then
+        sed -i '/^server {/i \
+map $http_host $port {\
+        default 80;\
+        "~^[^\:]+:(?<p>\d+)$" $p;\
+}\
+' /etc/nginx/sites-enabled/default
+        sed -i '/server_name _/a \
+        proxy_set_header X-Real-IP $remote_addr;\
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\
+        proxy_set_header X-Forwarded-Server $host;\
+        proxy_set_header X-Forwarded-Port $port;\
+        proxy_set_header X-Forwarded-Proto $scheme;\
+        proxy_http_version 1.1;\
+        proxy_set_header Upgrade $http_upgrade;\
+        proxy_set_header Connection $http_connection;\
+        proxy_set_header Host $host;\
+        proxy_cache_bypass $http_upgrade;\
+        proxy_set_header X-Forwarded-Host $host;\
+        proxy_connect_timeout 300s;\
+        proxy_read_timeout 300s;\
+        client_header_timeout 300s;\
+        client_body_timeout 300s;\
+        client_max_body_size 1000M;\
+        send_timeout 300s;' /etc/nginx/sites-enabled/default
     fi
 }
 
