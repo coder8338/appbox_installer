@@ -562,7 +562,7 @@ setup_jackett() {
     supervisorctl stop jackett || true
     apt install -y libicu60 openssl1.0
     cd /opt
-    curl -L -O $( curl -s https://api.github.com/repos/Jackett/Jackett/releases | grep LinuxAMDx64 | grep browser_download_url | head -1 | cut -d \" -f 4 )
+    curl -L -O $( curl -s https://api.github.com/repos/Jackett/Jackett/releases/latest | grep LinuxAMDx64 | grep browser_download_url | head -1 | cut -d \" -f 4 )
     tar -xvzf Jackett.Binaries.LinuxAMDx64.tar.gz
     rm -f Jackett.Binaries.LinuxAMDx64.tar.gz
     chown -R appbox:appbox /opt
