@@ -222,8 +222,7 @@ setup_bazarr() {
         sleep 1
     done
     kill -9 $(ps aux | grep 'python3.7 -u /opt/bazarr/bazarr/main.py' | grep -v 'grep' | grep -v 'bash' | awk '{print $2}')
-    sed -i 's/name="settings_general_baseurl"/name="settings_general_baseurl" value="{{settings.general.base_url}}"/g' /opt/bazarr/views/wizard_general.tpl
-    sed -i '0,/base_url = \//s//base_url = \/bazarr\//' /opt/bazarr/data/config/config.ini
+    sed -i '0,/base_url = /s//base_url = \/bazarr\//' /opt/bazarr/data/config/config.ini
 cat << EOF > /etc/supervisor/conf.d/bazarr.conf
 [program:bazarr]
 command=/bin/su -s /bin/bash -c "python3.7 /opt/bazarr/bazarr.py" appbox
