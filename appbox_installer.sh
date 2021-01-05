@@ -743,6 +743,55 @@ EOF
     The default password for pyload is: pyload"
 }
 
+setup_deemixrr() {
+    supervisorctl stop deemixrr || true
+    wget https://packages.microsoft.com/config/ubuntu/18.04/packages-microsoft-prod.deb -O /tmp/packages-microsoft-prod.deb
+    wget -qO- https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+    dpkg -i /tmp/packages-microsoft-prod.deb
+    rm -f /tmp/packages-microsoft-prod.deb
+    add-apt-repository "$(wget -qO- https://packages.microsoft.com/config/ubuntu/18.04/mssql-server-2019.list)"
+    apt-get update; \
+    apt-get install -y apt-transport-https && \
+    apt-get update && \
+    apt-get install -y dotnet-sdk-5.0 python3 python3-pip aspnetcore-runtime-3.1 mssql-server
+    mkdir -p /var/opt/mssql/
+    git clone --depth 1 -b master https://github.com/TheUltimateC0der/Deemixrr.git /opt/deemixrr
+    cd /opt/deemixrr
+    dotnet restore "Deemixrr/Deemixrr.csproj"
+    dotnet build "Deemixrr/Deemixrr.csproj" -c Release -o /opt/deemixrr/app/build
+    dotnet publish "Deemixrr/Deemixrr.csproj" -c Release -o /opt/deemixrr/app/publish
+    python3 -m pip install --quiet deemix
+    mkdir /home/appbox/.config/deemix
+    chown -R appbox:appbox /opt/deemixrr /home/appbox/.config/deemix /var/opt/mssql
+    cat << EOF > /etc/supervisor/conf.d/deemixrr.conf
+[program:deemixrr]
+command=/bin/su -s /bin/bash -c "export Kestrel__EndPoints__Http__Url=http://0.0.0.0:5555/deemixrr;export ConnectionStrings__DefaultConnection=\"server=localhost;uid=sa;pwd=TAOIDh89333iundafkjasd;database=Deemixrr;pooling=true\";export Hangfire__DashboardPath=/autoloaderjobs;export Hangfire__Password=TAOIDh89333iundafkjasd;export Hangfire__Username=Deemixrr;export Hangfire__Workers=2;export JobConfiguration__GetUpdatesRecurringJob='0 2 * * *';export JobConfiguration__SizeCalculatorRecurringJob='0 12 * * *';export DelayConfiguration__ImportArtistsBackgroundJob_ExecuteDelay=1000;export DelayConfiguration__CheckArtistForUpdatesBackgroundJob_GetTrackCountDelay=1000;export DelayConfiguration__CheckArtistForUpdatesBackgroundJob_ExecuteDelay=1000;export DelayConfiguration__CheckPlaylistForUpdatesBackgroundJob_ExecuteDelay=1000;export DelayConfiguration__CreateArtistBackgroundJob_FromPlaylistDelay=1000;export DelayConfiguration__CreateArtistBackgroundJob_FromUserDelay=1000;export DelayConfiguration__CreateArtistBackgroundJob_FromCsvDelay=1000;export DelayConfiguration__CreatePlaylistBackgroundJob_FromCsvDelay=1000;export PGID=1000;export PUID=1000;dotnet /opt/deemixrr/app/publish/Deemixrr.dll" appbox
+autostart=true
+autorestart=true
+priority=5
+stdout_events_enabled=true
+stderr_events_enabled=true
+stdout_logfile=/tmp/deemixrr.log
+stdout_logfile_maxbytes=0
+stderr_logfile=/tmp/deemixrr.log
+stderr_logfile_maxbytes=0
+EOF
+    cat << EOF > /etc/supervisor/conf.d/mssql.conf
+[program:mssql]
+command=/bin/su -s /bin/bash -c "export SA_PASSWORD=TAOIDh89333iundafkjasd; export ACCEPT_EULA=Y;/opt/mssql/bin/sqlservr" appbox
+autostart=true
+autorestart=true
+priority=5
+stdout_events_enabled=true
+stderr_events_enabled=true
+stdout_logfile=/tmp/mssql.log
+stdout_logfile_maxbytes=0
+stderr_logfile=/tmp/mssql.log
+stderr_logfile_maxbytes=0
+EOF
+    configure_nginx 'deemixrr' '5555'
+}
+
 install_prompt() {
     echo "Welcome to the install script, please select one of the following options to install:
     
