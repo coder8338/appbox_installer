@@ -88,7 +88,10 @@ configure_nginx() {
     PORT=$2
     APPBOX_USER=$(echo "${HOSTNAME}" | awk -F'.' '{print $2}')
     if ! grep -q "/${NAME} {" /etc/nginx/sites-enabled/default; then
-        sed -i '/server_name _/a \ \n\ \ \ \ \ \ \ \ location /'${NAME}' {\n \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ proxy_pass http://127.0.0.1:'${PORT}';\n\ \ \ \ \ \ \ \ }' /etc/nginx/sites-enabled/default
+        sed -i '/server_name _/a \
+        location /'${NAME}' {\
+                proxy_pass http://127.0.0.1:'${PORT}';\
+        }' /etc/nginx/sites-enabled/default
     fi
     supervisorctl update
     supervisorctl start ${NAME} || true
@@ -792,6 +795,90 @@ EOF
     configure_nginx 'deemixrr' '5555'
 }
 
+setup_organizr() {
+    apt install -y php-mysql php-sqlite3 sqlite3 php-xml php-zip php-curl php-fpm git
+    mkdir -p /run/php
+    mkdir -p /opt/organizr
+    git clone --depth 1 -b v2-master https://github.com/causefx/Organizr /opt/organizr/organizr
+
+    echo "Performing convertion to use sockets"
+
+    if [ ! -f /etc/php/7.2/fpm/pool.d/www.conf.original ]; then
+        cp /etc/php/7.2/fpm/pool.d/www.conf /etc/php/7.2/fpm/pool.d/www.conf.original
+    fi
+
+    # TODO: Check if settings catch
+    # enable PHP-FPM
+    sed -i "s#www-data#appbox#g" /etc/php/7.2/fpm/pool.d/www.conf
+    sed -i "s#;listen.mode = 0660#listen.mode = 0777#g" /etc/php/7.2/fpm/pool.d/www.conf
+    # set our recommended defaults
+    sed -i "s#pm = dynamic#pm = ondemand#g" /etc/php/7.2/fpm/pool.d/www.conf
+    sed -i "s#pm.max_children = 5#pm.max_children = 4000#g" /etc/php/7.2/fpm/pool.d/www.conf
+    sed -i "s#pm.start_servers = 2#;pm.start_servers = 2#g" /etc/php/7.2/fpm/pool.d/www.conf
+    sed -i "s#;pm.process_idle_timeout = 10s;#pm.process_idle_timeout = 10s;#g" /etc/php/7.2/fpm/pool.d/www.conf
+    sed -i "s#;pm.max_requests = 500#pm.max_requests = 0#g" /etc/php/7.2/fpm/pool.d/www.conf
+    chown -R appbox:appbox /var/lib/php
+
+        cat << EOF > /etc/nginx/sites-enabled/organizr
+# V0.0.4
+server {
+  listen 8009;
+  root /opt/organizr;
+  index index.html index.htm index.php;
+
+  server_name _;
+  client_max_body_size 0;
+
+  # Real Docker IP
+  # Make sure to update the IP range with your Docker IP subnet
+  real_ip_header X-Forwarded-For;
+  #set_real_ip_from 172.17.0.0/16;
+  real_ip_recursive on;
+
+  # Deny access to Org .git directory
+  location ~ /\.git {
+    deny all;
+  }
+
+  location /organizr {
+    try_files \$uri \$uri/ /organizr/index.html /organizr/index.php?\$args =404;
+  }
+
+  location /organizr/api/v2 {
+    try_files \$uri /organizr/api/v2/index.php\$is_args\$args;
+  }
+
+  location ~ \.php$ {
+    fastcgi_split_path_info ^(.+?\.php)(\/.*|)$;
+    fastcgi_pass unix:/run/php/php7.2-fpm.sock;
+    fastcgi_index index.php;
+    include fastcgi_params;
+    fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+    fastcgi_buffers 32 32k;
+    fastcgi_buffer_size 32k;
+  }
+}
+EOF
+
+    chown -R appbox:appbox /opt/organizr /run/php
+
+    cat << EOF > /etc/supervisor/conf.d/php-fpm.conf
+[program:php-fpm]
+command=/usr/sbin/php-fpm7.2 -F
+autostart=true
+autorestart=true
+priority=5
+stdout_events_enabled=true
+stderr_events_enabled=true
+stdout_logfile=/tmp/php-fpm.log
+stdout_logfile_maxbytes=0
+stderr_logfile=/tmp/php-fpm.log
+stderr_logfile_maxbytes=0
+EOF
+
+    configure_nginx 'organizr/' '8009'
+}
+
 install_prompt() {
     echo "Welcome to the install script, please select one of the following options to install:
     
@@ -814,6 +901,7 @@ install_prompt() {
     17) nzbhydra2
     18) ngpost
     19) pyload
+    20) organizr
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
@@ -895,6 +983,10 @@ install_prompt() {
         19|pyload)
             echo "Setting up pyload.."
             setup_pyload
+            ;;
+        20|organizr)
+            echo "Setting up organizr.."
+            setup_organizr
             ;;
         *) 
             echo "Sorry, that option doesn't exist, please try again!"
