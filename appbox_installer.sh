@@ -4,7 +4,7 @@
 # Just run this on your Ubuntu VNC app via SSH or in the terminal (Applications > Terminal Emulator) using:
 # sudo bash -c "bash <(curl -Ls https://raw.githubusercontent.com/coder8338/appbox_installer/main/appbox_installer.sh)"
 #
-# We not work for appbox, we're a friendly community helping others out, we will try to keep this as update to date as possible!
+# We do not work for appbox, we're a friendly community helping others out, we will try to keep this as update to date as possible!
 
 set -e
 set -u
@@ -801,7 +801,7 @@ setup_organizr() {
     mkdir -p /opt/organizr
     git clone --depth 1 -b v2-master https://github.com/causefx/Organizr /opt/organizr/organizr
 
-    echo "Performing convertion to use sockets"
+    echo "Configuring PHP to use sockets"
 
     if [ ! -f /etc/php/7.2/fpm/pool.d/www.conf.original ]; then
         cp /etc/php/7.2/fpm/pool.d/www.conf /etc/php/7.2/fpm/pool.d/www.conf.original
