@@ -308,14 +308,15 @@ EOF
 
 setup_filebot() {
     # https://www.oracle.com/webapps/redirect/signon?nexturl=https://download.oracle.com/otn/java/jdk/11.0.4+10/cf1bbcbf431a474eb9fc550051f4ee78/jdk-11.0.4_linux-x64_bin.tar.gz
-    mkdir -p /var/cache/oracle-jdk11-installer-local/
-    wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/jdk-11.0.8_linux-x64_bin.tar.gz --header "Cookie: oraclelicense=accept-securebackup-cookie" https://download.oracle.com/otn-pub/java/jdk/11.0.8%2B10/dc5cf74f97104e8eac863698146a7ac3/jdk-11.0.8_linux-x64_bin.tar.gz
+    mkdir -p /var/cache/oracle-jdk11-installer-local
+    wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/jdk-11.0.9_linux-x64_bin.tar.gz --header "Cookie: oraclelicense=accept-securebackup-cookie" https://download.oracle.com/otn-pub/java/jdk/11.0.9%2B7/eec35ebefb3f4133bd045b891f05db94/jdk-11.0.9_linux-x64_bin.tar.gz
     add-apt-repository -y ppa:linuxuprising/java
     apt update
     echo debconf shared/accepted-oracle-license-v1-2 select true | debconf-set-selections
     echo debconf shared/accepted-oracle-license-v1-2 seen true | debconf-set-selections
     apt-get install -y oracle-java11-installer-local libchromaprint-tools || true
     sed -i 's/tar xzf $FILENAME/tar xzf $FILENAME --no-same-owner/g' /var/lib/dpkg/info/oracle-java11-installer-local.postinst
+    dpkg --configure -a
     mkdir /opt/filebot && cd /opt/filebot
     sh -xu <<< "$(curl -fsSL https://raw.githubusercontent.com/filebot/plugins/master/installer/tar.sh)"
         cat << EOF > /home/appbox/Desktop/Filebot.desktop
@@ -646,13 +647,15 @@ setup_vnc_ssl() {
 
 setup_nzbhydra2() {
     supervisorctl stop nzbhydra2 || true
-    wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/jdk-11.0.8_linux-x64_bin.tar.gz --header "Cookie: oraclelicense=accept-securebackup-cookie" https://download.oracle.com/otn-pub/java/jdk/11.0.8%2B10/dc5cf74f97104e8eac863698146a7ac3/jdk-11.0.8_linux-x64_bin.tar.gz
+    mkdir -p /var/cache/oracle-jdk11-installer-local
+    wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/jdk-11.0.9_linux-x64_bin.tar.gz --header "Cookie: oraclelicense=accept-securebackup-cookie" https://download.oracle.com/otn-pub/java/jdk/11.0.9%2B7/eec35ebefb3f4133bd045b891f05db94/jdk-11.0.9_linux-x64_bin.tar.gz
     add-apt-repository -y ppa:linuxuprising/java
     apt update
     echo debconf shared/accepted-oracle-license-v1-2 select true | debconf-set-selections
     echo debconf shared/accepted-oracle-license-v1-2 seen true | debconf-set-selections
     apt-get install -y oracle-java11-installer-local libchromaprint-tools || true
     sed -i 's/tar xzf $FILENAME/tar xzf $FILENAME --no-same-owner/g' /var/lib/dpkg/info/oracle-java11-installer-local.postinst
+    dpkg --configure -a
     mkdir -p /opt/nzbhydra2
     cd /opt/nzbhydra2
     curl -L -O $( curl -s https://api.github.com/repos/theotherp/nzbhydra2/releases | grep linux.zip | grep browser_download_url | head -1 | cut -d \" -f 4 )
@@ -879,6 +882,37 @@ EOF
     configure_nginx 'organizr/' '8009'
 }
 
+setup_komga() {
+    mkdir -p /var/cache/oracle-jdk11-installer-local
+    wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/jdk-11.0.9_linux-x64_bin.tar.gz --header "Cookie: oraclelicense=accept-securebackup-cookie" https://download.oracle.com/otn-pub/java/jdk/11.0.9%2B7/eec35ebefb3f4133bd045b891f05db94/jdk-11.0.9_linux-x64_bin.tar.gz
+    add-apt-repository -y ppa:linuxuprising/java
+    apt update
+    echo debconf shared/accepted-oracle-license-v1-2 select true | debconf-set-selections
+    echo debconf shared/accepted-oracle-license-v1-2 seen true | debconf-set-selections
+    apt-get install -y oracle-java11-installer-local || true
+    sed -i 's/tar xzf $FILENAME/tar xzf $FILENAME --no-same-owner/g' /var/lib/dpkg/info/oracle-java11-installer-local.postinst
+    dpkg --configure -a
+    mkdir /opt/komga
+    cd /opt/komga
+    curl -L -O $( curl -s https://api.github.com/repos/gotson/komga/releases | grep jar | grep browser_download_url | head -1 | cut -d \" -f 4 )
+    chown -R appbox:appbox /opt/komga
+    cat << EOF > /etc/supervisor/conf.d/komga.conf
+[program:komga]
+command=/bin/su -s /bin/bash -c "export FILENAME=\$(ls -la /opt/komga | grep jar | awk '{print \$9}'); /usr/bin/java -jar /opt/komga/\${FILENAME} --server.servlet.context-path="/komga" --server.port=8443" appbox
+autostart=true
+autorestart=true
+priority=5
+stdout_events_enabled=true
+stderr_events_enabled=true
+stdout_logfile=/tmp/komga.log
+stdout_logfile_maxbytes=0
+stderr_logfile=/tmp/komga.log
+stderr_logfile_maxbytes=0
+EOF
+
+    configure_nginx 'komga' '8443'
+}
+
 install_prompt() {
     echo "Welcome to the install script, please select one of the following options to install:
     
@@ -902,6 +936,7 @@ install_prompt() {
     18) ngpost
     19) pyload
     20) organizr
+    21) komga
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
@@ -987,6 +1022,10 @@ install_prompt() {
         20|organizr)
             echo "Setting up organizr.."
             setup_organizr
+            ;;
+        21|komga)
+            echo "Setting up komga.."
+            setup_komga
             ;;
         *) 
             echo "Sorry, that option doesn't exist, please try again!"
