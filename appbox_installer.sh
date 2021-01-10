@@ -120,8 +120,8 @@ setup_radarr() {
     apt -y install dotnet-runtime-3.1 libmediainfo0v5 || true
     cd /opt
     curl -L -O $( curl -s https://api.github.com/repos/Radarr/Radarr/releases | grep linux-core-x64.tar.gz | grep browser_download_url | head -1 | cut -d \" -f 4 )
-    tar -xvzf Radarr.master.*.linux-core-x64.tar.gz
-    rm -f Radarr.master.*.linux-core-x64.tar.gz
+    tar -xvzf Radarr.*.linux-core-x64.tar.gz
+    rm -f Radarr.*.linux-core-x64.tar.gz
     chown -R appbox:appbox /opt
     # Generate config
     /bin/su -s /bin/bash -c "/opt/Radarr/Radarr" appbox &
