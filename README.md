@@ -25,6 +25,13 @@ For example, to stop radarr you would run:
 
 `sudo supervisorctl stop radarr`
 
+## How to view log files
+The log for each service is found in `/tmp` the format is: `/tmp/<service name>.log`
+
+For example, if you wanted to view the log file for radarr you would run:
+
+`cat /tmp/radarr.log`
+
 ## FAQs
 Q: I want auto moving from my torrent client to anywhere using Radarr/Sonarr
 
