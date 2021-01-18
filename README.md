@@ -8,6 +8,23 @@ Appbox installer for VNC webui over SSL, radarr, sonarr, lidarr, bazarr, flexget
 
 3. Enter the following `sudo bash -c "bash <(curl -Ls https://raw.githubusercontent.com/coder8338/appbox_installer/main/appbox_installer.sh)"`
 
+## How to manage services
+To stop a service:
+
+`sudo supervisorctl stop <service name>`
+
+To start a service:
+
+`sudo supervisorctl start <service name>`
+
+To restart a service:
+
+`sudo supervisorctl restart <service name>`
+
+For example, to stop radarr you would run:
+
+`sudo supervisorctl stop radarr`
+
 ## FAQs
 Q: I want auto moving from my torrent client to anywhere using Radarr/Sonarr
 
