@@ -66,18 +66,19 @@ setup_radarr() {
 	rm -f packages-microsoft-prod.deb
     apt update
     apt -y install dotnet-runtime-3.1 libmediainfo0v5 || true
-    cd /home/appbox
+    cd /home/appbox/appbox_installer
     curl -L -O $( curl -s https://api.github.com/repos/Radarr/Radarr/releases | grep linux-core-x64.tar.gz | grep browser_download_url | head -1 | cut -d \" -f 4 )
     tar -xvzf Radarr.*.linux-core-x64.tar.gz
     rm -f Radarr.*.linux-core-x64.tar.gz
-    chown -R appbox:appbox /home/appbox/Radarr
+    chown -R appbox:appbox /home/appbox/appbox_installer/Radarr
+    chown -R appbox:appbox /home/appbox/.config
     # Generate config
-    /bin/su -s /bin/bash -c "/home/appbox/Radarr/Radarr" appbox &
-    until grep -q 'UrlBase' /home/appbox/.config/Radarr/config.xml; do
+    /bin/su -s /bin/bash -c "/home/appbox/appbox_installer/Radarr/Radarr" appbox &
+    until grep -q 'UrlBase' /home/appbox/appbox_installer/.config/Radarr/config.xml; do
         sleep 1
     done
     kill -9 $(ps aux | grep 'Radarr' | grep -v 'bash' | awk '{print $2}')
-    sed -i 's@<UrlBase></UrlBase>@<UrlBase>/radarr</UrlBase>@g' /home/appbox/.config/Radarr/config.xml
+    sed -i 's@<UrlBase></UrlBase>@<UrlBase>/radarr</UrlBase>@g' /home/appbox/appbox_installer/.config/Radarr/config.xml
     create_service_files 'radarr'
 cat << EOF > /etc/services.d/radarr/run
 #!/bin/execlineb -P
@@ -87,7 +88,7 @@ fdmove -c 2 1
 
 s6-setuidgid appbox
 
-/bin/bash -c "rm /home/appbox/.config/Radarr/radarr.pid; /home/appbox/Radarr/Radarr"
+/bin/bash -c "rm /home/appbox/.config/Radarr/radarr.pid; /home/appbox/appbox_installer/Radarr/Radarr"
 EOF
     chmod +x /etc/services.d/radarr/run
     kill -HUP 1
@@ -956,8 +957,8 @@ install_prompt() {
 }
 
 run_as_root
-echo -e "\nEnsuring opt exists..."
-mkdir -p /opt
+echo -e "\nEnsuring appbox_installer folder exists..."
+mkdir -p /home/appbox/appbox_installer
 echo -e "\nUpdating apt packages..."
 apt update
 until install_prompt ; do : ; done
