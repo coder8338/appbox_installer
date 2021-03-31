@@ -41,8 +41,6 @@ configure_nginx() {
                 proxy_pass http://127.0.0.1:'${PORT}';\
         }' /etc/nginx/sites-enabled/default
     fi
-    supervisorctl update
-    supervisorctl start ${NAME} || true
     pkill -HUP nginx
     echo -e "\n\n\n\n\n
     Installation sucessful! Please point your browser to:
