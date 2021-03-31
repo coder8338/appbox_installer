@@ -19,7 +19,7 @@ run_as_root() {
     fi
 }
 
-create_service_files() {
+create_service() {
     NAME=$1
     RUNNER=$2
     mkdir -p /etc/services.d/${NAME}/log
