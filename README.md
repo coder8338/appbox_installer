@@ -1,6 +1,7 @@
 # This is a work in progress, I am in the process of adding all apps.
+If you want the installer for Ubuntu 18.04 [click here](https://github.com/coder8338/appbox_installer/tree/Ubuntu-18.04)
 
-# Appbox Installer
+# Appbox Installer for Ubuntu 20.04
 Appbox installer for radarr, sonarr, sickchill, jackett, couchpotato, nzbget.
 
 ## How to run
