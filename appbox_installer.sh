@@ -129,6 +129,132 @@ EOF
     configure_nginx 'sonarr' '8989'
 }
 
+setup_sickchill() {
+    s6-svc -d /run/s6/services/sickchill || true
+    apt install -y git unrar-free git openssl libssl-dev python mediainfo || true
+    git clone --depth 1 https://github.com/SickChill/SickChill.git /home/appbox/appbox_installer/sickchill
+    cp /home/appbox/appbox_installer/sickchill/contrib/runscripts/init.ubuntu /etc/init.d/sickchill
+    chmod +x /etc/init.d/sickchill
+    sed -i 's/--daemon//g' /etc/init.d/sickchill
+    cat << EOF > /etc/default/sickchill
+SR_HOME=/home/appbox/appbox_installer/sickchill/
+SR_DATA=/home/appbox/appbox_installer/sickchill/
+SR_USER=appbox
+EOF
+    cat << EOF >/home/appbox/appbox_installer/sickchill/config.ini
+[General]
+  web_host = 0.0.0.0
+  handle_reverse_proxy = 1
+  launch_browser = 0
+  web_root = "/sickchill"
+EOF
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+/etc/init.d/sickchill start
+EOF
+)
+    chown -R appbox:appbox /home/appbox/appbox_installer/sickchill
+    create_service 'sickchill'
+    configure_nginx 'sickchill' '8081'
+}
+
+setup_jackett() {
+    s6-svc -d /run/s6/services/jackett || true
+    apt install -y libcurl4-openssl-dev bzip2
+    cd /home/appbox/appbox_installer
+    curl -L -O $( curl -s https://api.github.com/repos/Jackett/Jackett/releases/latest | grep LinuxAMDx64 | grep browser_download_url | head -1 | cut -d \" -f 4 )
+    tar -xvzf Jackett.Binaries.LinuxAMDx64.tar.gz
+    rm -f Jackett.Binaries.LinuxAMDx64.tar.gz
+    chown -R appbox:appbox /home/appbox/appbox_installer/Jackett
+    mkdir -p /home/appbox/.config/Jackett
+    cat << EOF > /home/appbox/.config/Jackett/ServerConfig.json
+{
+  "Port": 9117,
+  "AllowExternal": true,
+  "BasePathOverride": "/jackett",
+}
+EOF
+    chown -R appbox:appbox /home/appbox/.config/Jackett
+
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+s6-setuidgid appbox
+
+/home/appbox/appbox_installer/Jackett/jackett
+EOF
+)
+    create_service 'jackett'
+    configure_nginx 'jackett' '9117'
+}
+
+setup_couchpotato() {
+    s6-svc -d /run/s6/services/couchpotato || true
+    apt-get install python git -y || true
+    mkdir /home/appbox/appbox_installer/couchpotato && cd /home/appbox/appbox_installer/couchpotato
+    git clone --depth 1 https://github.com/RuudBurger/CouchPotatoServer.git
+    cat << EOF > /etc/default/couchpotato
+CP_USER=appbox
+CP_HOME=/home/appbox/appbox_installer/couchpotato/CouchPotatoServer
+CP_DATA=/home/appbox/appbox_installer/couchpotato/CouchPotatoData
+EOF
+    mkdir -p /home/appbox/appbox_installer/couchpotato/CouchPotatoData
+    cat << EOF > /home/appbox/appbox_installer/couchpotato/CouchPotatoData/settings.conf
+[core]
+url_base = /couchpotato
+show_wizard = 1
+launch_browser = False
+EOF
+    cp CouchPotatoServer/init/ubuntu /etc/init.d/couchpotato
+    chmod +x /etc/init.d/couchpotato
+    sed -i 's/--daemon//g' /etc/init.d/couchpotato
+    sed -i 's/--quiet//g' /etc/init.d/couchpotato
+    chown -R appbox:appbox /home/appbox/appbox_installer/couchpotato/CouchPotatoData
+    chown -R appbox:appbox /home/appbox/appbox_installer/couchpotato/CouchPotatoServer
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+/etc/init.d/couchpotato start
+EOF
+)
+    create_service 'couchpotato'
+    configure_nginx 'couchpotato' '5050'
+}
+
+setup_nzbget() {
+    s6-svc -d /run/s6/services/nzbget || true
+    mkdir /tmp/nzbget
+    wget -O /tmp/nzbget/nzbget.run https://nzbget.net/download/nzbget-latest-bin-linux.run
+    chown appbox:appbox /tmp/nzbget/nzbget.run
+    mkdir -p /home/appbox/appbox_installer/nzbget
+    chown appbox:appbox /home/appbox/appbox_installer/nzbget
+    /bin/su -s /bin/bash -c "sh /tmp/nzbget/nzbget.run --destdir /home/appbox/appbox_installer/nzbget" appbox
+    rm -rf /tmp/nzbget
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+s6-setuidgid appbox
+
+/home/appbox/appbox_installer/nzbget/nzbget -s -o outputmode=log
+EOF
+)
+    create_service 'nzbget'
+    configure_nginx 'nzbget' '6789'
+}
+
 # setup_lidarr() {
 #     s6-svc -d /run/s6/services/lidarr || true
 #     apt update
@@ -285,81 +411,6 @@ EOF
 #     Installation sucessful! Please launch filebot using the icon on your desktop."
 # }
 
-# setup_couchpotato() {
-#     s6-svc -d /run/s6/services/couchpotato || true
-#     apt-get install python git -y || true
-#     mkdir /opt/couchpotato && cd /opt/couchpotato
-#     git clone --depth 1 https://github.com/RuudBurger/CouchPotatoServer.git
-#     cat << EOF > /etc/default/couchpotato
-# CP_USER=appbox
-# CP_HOME=/opt/couchpotato/CouchPotatoServer
-# CP_DATA=/home/appbox/couchpotato
-# EOF
-#     chown appbox:appbox /opt/
-#     cp CouchPotatoServer/init/ubuntu /etc/init.d/couchpotato
-#     chmod +x /etc/init.d/couchpotato
-#     sed -i 's/--daemon//g' /etc/init.d/couchpotato
-#     sed -i 's/--quiet//g' /etc/init.d/couchpotato
-#     cat << EOF > /etc/supervisor/conf.d/couchpotato.conf
-# [program:couchpotato]
-# command=/etc/init.d/couchpotato start
-# autostart=true
-# autorestart=true
-# priority=5
-# stdout_events_enabled=true
-# stderr_events_enabled=true
-# stdout_logfile=/tmp/couchpotato.log
-# stdout_logfile_maxbytes=0
-# stderr_logfile=/tmp/couchpotato.log
-# stderr_logfile_maxbytes=0
-# EOF
-#     mkdir -p /home/appbox/couchpotato/
-#     cat << EOF > /home/appbox/couchpotato/settings.conf
-# [core]
-# url_base = /couchpotato
-# show_wizard = 1
-# launch_browser = False
-# EOF
-#     chown -R appbox:appbox /home/appbox/couchpotato
-#     configure_nginx 'couchpotato' '5050'
-# }
-
-# setup_sickchill() {
-#     s6-svc -d /run/s6/services/sickchill || true
-#     apt install -y git unrar-free git openssl libssl-dev python2.7 mediainfo || true
-#     git clone --depth 1 https://github.com/SickChill/SickChill.git /home/appbox/sickchill
-#     cp /home/appbox/sickchill/contrib/runscripts/init.ubuntu /etc/init.d/sickchill
-#     chmod +x /etc/init.d/sickchill
-#     sed -i 's/--daemon//g' /etc/init.d/sickchill
-#     cat << EOF > /etc/default/sickchill
-# SR_HOME=/home/appbox/sickchill/
-# SR_DATA=/home/appbox/sickchill/
-# SR_USER=appbox
-# EOF
-#     cat << EOF >/home/appbox/sickchill/config.ini
-# [General]
-#   web_host = 0.0.0.0
-#   handle_reverse_proxy = 1
-#   launch_browser = 0
-#   web_root = "/sickchill"
-# EOF
-#     cat << EOF > /etc/supervisor/conf.d/sickchill.conf
-# [program:sickchill]
-# command=/etc/init.d/sickchill start
-# autostart=true
-# autorestart=true
-# priority=5
-# stdout_events_enabled=true
-# stderr_events_enabled=true
-# stdout_logfile=/tmp/sickchill.log
-# stdout_logfile_maxbytes=0
-# stderr_logfile=/tmp/sickchill.log
-# stderr_logfile_maxbytes=0
-# EOF
-#     chown -R appbox:appbox /home/appbox/sickchill
-#     configure_nginx 'sickchill' '8081'
-# }
-
 # setup_medusa() {
 #     s6-svc -d /run/s6/services/medusa || true
 #     apt install -y git unrar-free git openssl libssl-dev python3-pip python3-distutils python3.7 mediainfo || true
@@ -433,31 +484,6 @@ EOF
 #     configure_nginx 'lazylibrarian' '5299'
 # }
 
-# setup_nzbget() {
-#     s6-svc -d /run/s6/services/nzbget || true
-#     mkdir /tmp/nzbget
-#     wget -O /tmp/nzbget/nzbget.run https://nzbget.net/download/nzbget-latest-bin-linux.run
-#     chown appbox:appbox /tmp/nzbget/nzbget.run
-#     mkdir -p /opt/nzbget
-#     chown appbox:appbox /opt/nzbget
-#     /bin/su -s /bin/bash -c "sh /tmp/nzbget/nzbget.run --destdir /opt/nzbget" appbox
-#     rm -rf /tmp/nzbget
-#     cat << EOF > /etc/supervisor/conf.d/nzbget.conf
-# [program:nzbget]
-# command=/bin/su -s /bin/bash -c "/opt/nzbget/nzbget -s" appbox
-# autostart=true
-# autorestart=true
-# priority=5
-# stdout_events_enabled=true
-# stderr_events_enabled=true
-# stdout_logfile=/tmp/nzbget.log
-# stdout_logfile_maxbytes=0
-# stderr_logfile=/tmp/nzbget.log
-# stderr_logfile_maxbytes=0
-# EOF
-#     configure_nginx 'nzbget' '6789'
-# }
-
 # setup_sabnzbdplus() {
 #     s6-svc -d /run/s6/services/sabnzbd || true
 #     add-apt-repository -y ppa:jcfp/ppa
@@ -510,39 +536,6 @@ EOF
 # stderr_logfile_maxbytes=0
 # EOF
 #     configure_nginx 'ombi' '5000'
-# }
-
-# setup_jackett() {
-#     s6-svc -d /run/s6/services/jackett || true
-#     apt install -y libicu60 openssl1.0
-#     cd /opt
-#     curl -L -O $( curl -s https://api.github.com/repos/Jackett/Jackett/releases/latest | grep LinuxAMDx64 | grep browser_download_url | head -1 | cut -d \" -f 4 )
-#     tar -xvzf Jackett.Binaries.LinuxAMDx64.tar.gz
-#     rm -f Jackett.Binaries.LinuxAMDx64.tar.gz
-#     chown -R appbox:appbox /opt
-#     mkdir -p /home/appbox/.config/Jackett
-#     cat << EOF > /home/appbox/.config/Jackett/ServerConfig.json
-# {
-#   "Port": 9117,
-#   "AllowExternal": true,
-#   "BasePathOverride": "/jackett",
-# }
-# EOF
-#     chown -R appbox:appbox /home/appbox/.config/Jackett
-#     cat << EOF > /etc/supervisor/conf.d/jackett.conf
-# [program:jackett]
-# command=/bin/su -s /bin/bash -c "/opt/Jackett/jackett" appbox
-# autostart=true
-# autorestart=true
-# priority=5
-# stdout_events_enabled=true
-# stderr_events_enabled=true
-# stdout_logfile=/tmp/jackett.log
-# stdout_logfile_maxbytes=0
-# stderr_logfile=/tmp/jackett.log
-# stderr_logfile_maxbytes=0
-# EOF
-#     configure_nginx 'jackett' '9117'
 # }
 
 # setup_synclounge() {
@@ -865,6 +858,10 @@ install_prompt() {
     
     1) radarr
     2) sonarr
+    3) sickchill
+    4) jackett
+    5) couchpotato
+    6) nzbget
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
@@ -879,6 +876,22 @@ install_prompt() {
             echo "Setting up sonarr.."
             setup_sonarr
             ;;
+        3|sickchill)
+            echo "Setting up sickchill.."
+            setup_sickchill
+            ;;
+        4|jackett)
+            echo "Setting up jackett.."
+            setup_jackett
+            ;;
+        5|couchpotato)
+            echo "Setting up couchpotato.."
+            setup_couchpotato
+            ;;
+        6|nzbget)
+            echo "Setting up nzbget.."
+            setup_nzbget
+            ;;
         # 3|flexget)
         #     echo "Setting up flexget.."
         #     setup_flexget
@@ -887,18 +900,6 @@ install_prompt() {
         #     echo "Setting up filebot.."
         #     setup_filebot
         #     ;;
-        # 5|couchpotato)
-        #     echo "Setting up couchpotato.."
-        #     setup_couchpotato
-        #     ;;
-        # 6|sickchill)
-        #     echo "Setting up sickchill.."
-        #     setup_sickchill
-        #     ;;
-        # 7|nzbget)
-        #     echo "Setting up nzbget.."
-        #     setup_nzbget
-        #     ;;
         # 8|sabnzbdplus)
         #     echo "Setting up sabnzbdplus.."
         #     setup_sabnzbdplus
@@ -906,10 +907,6 @@ install_prompt() {
         # 9|ombi)
         #     echo "Setting up ombi.."
         #     setup_ombi
-        #     ;;
-        # 10|jackett)
-        #     echo "Setting up jackett.."
-        #     setup_jackett
         #     ;;
         # 11|synclounge)
         #     echo "Setting up synclounge.."
@@ -962,5 +959,5 @@ run_as_root
 echo -e "\nEnsuring appbox_installer folder exists..."
 mkdir -p /home/appbox/appbox_installer
 echo -e "\nUpdating apt packages..."
-apt update
+apt update >/dev/null 2>&1
 until install_prompt ; do : ; done
