@@ -1,4 +1,4 @@
-# Appbox Installer
+# Appbox Installer for Ubuntu 18.04
 Appbox installer for VNC webui over SSL, radarr, sonarr, lidarr, bazarr, flexget, filebot, couchpotato, sickchill, medusa, lazylibrarian, nzbget, sabnzbdplus, ombi, jackett, synclounge, nzbhydra2, ngpost, pyload, organizr &amp; komga.
 
 ## How to run
