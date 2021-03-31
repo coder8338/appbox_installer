@@ -89,7 +89,7 @@ fdmove -c 2 1
 
 s6-setuidgid appbox
 
-/bin/bash -c "rm /home/appbox/.config/Radarr/radarr.pid; /home/appbox/appbox_installer/Radarr/Radarr"
+bash -c "rm /home/appbox/.config/Radarr/radarr.pid; /home/appbox/appbox_installer/Radarr/Radarr"
 EOF
 )
     create_service 'radarr'
@@ -122,7 +122,7 @@ fdmove -c 2 1
 
 s6-setuidgid appbox
 
-/bin/bash -c "rm /home/appbox/.config/Sonarr/sonarr.pid; /usr/bin/mono --debug /usr/lib/sonarr/bin/Sonarr.exe -nobrowser"
+bash -c "rm /home/appbox/.config/Sonarr/sonarr.pid; /usr/bin/mono --debug /usr/lib/sonarr/bin/Sonarr.exe -nobrowser"
 EOF
 )
     create_service 'sonarr'
@@ -301,45 +301,44 @@ fdmove -c 2 1
 
 s6-setuidgid appbox
 
-cd /home/appbox/appbox_installer/ombiServer
-/home/appbox/appbox_installer/ombiServer/Ombi --baseurl /ombi --host http://*:5000 --storage /home/appbox/appbox_installer/ombiData/
+bash -c "cd /home/appbox/appbox_installer/ombiServer; /home/appbox/appbox_installer/ombiServer/Ombi --baseurl /ombi --host http://*:5000 --storage /home/appbox/appbox_installer/ombiData/"
 EOF
 )
     create_service 'ombi'
     configure_nginx 'ombi' '5000'
 }
 
-# setup_lidarr() {
-#     s6-svc -d /run/s6/services/lidarr || true
-#     apt update
-#     apt -y install libmediainfo0v5 libchromaprint-tools || true
-#     cd /opt
-#     curl -L -O $( curl -s https://api.github.com/repos/lidarr/Lidarr/releases | grep linux.tar.gz | grep browser_download_url | head -1 | cut -d \" -f 4 )
-#     tar -xvzf Lidarr.master.*.linux.tar.gz
-#     rm -f Lidarr.master.*.linux.tar.gz
-#     chown -R appbox:appbox /opt
-#     # Generate config
-#     /bin/su -s /bin/bash -c "/usr/bin/mono --debug /opt/Lidarr/Lidarr.exe -nobrowser" appbox &
-#     until grep -q 'UrlBase' /home/appbox/.config/Lidarr/config.xml; do
-#         sleep 1
-#     done
-#     kill -9 $(ps aux | grep 'mono' | grep 'Lidarr.exe' | grep -v 'bash' | awk '{print $2}')
-#     sed -i 's@<UrlBase></UrlBase>@<UrlBase>/lidarr</UrlBase>@g' /home/appbox/.config/Lidarr/config.xml
-# cat << EOF > /etc/supervisor/conf.d/lidarr.conf
-# [program:lidarr]
-# command=/bin/su -s /bin/bash -c "rm /home/appbox/.config/Lidarr/lidarr.pid; /usr/bin/mono --debug /opt/Lidarr/Lidarr.exe -nobrowser" appbox
-# autostart=true
-# autorestart=true
-# priority=5
-# stdout_events_enabled=true
-# stderr_events_enabled=true
-# stdout_logfile=/tmp/lidarr.log
-# stdout_logfile_maxbytes=0
-# stderr_logfile=/tmp/lidarr.log
-# stderr_logfile_maxbytes=0
-# EOF
-#     configure_nginx 'lidarr' '8686'
-# }
+setup_lidarr() {
+    s6-svc -d /run/s6/services/lidarr || true
+    apt update
+    apt -y install libmediainfo0v5 libchromaprint-tools || true
+    cd /home/appbox/appbox_installer
+    curl -L -O $( curl -s https://api.github.com/repos/lidarr/Lidarr/releases | grep linux.tar.gz | grep browser_download_url | head -1 | cut -d \" -f 4 )
+    tar -xvzf Lidarr.develop.*.linux.tar.gz
+    rm -f Lidarr.develop.*.linux.tar.gz
+    chown -R appbox:appbox /home/appbox/appbox_installer/Lidarr
+    # Generate config
+    /bin/su -s /bin/bash -c "/usr/bin/mono --debug /home/appbox/appbox_installer/Lidarr/Lidarr.exe -nobrowser" appbox &
+    until grep -q 'UrlBase' /home/appbox/.config/Lidarr/config.xml; do
+        sleep 1
+    done
+    pkill -f 'Lidarr.exe'
+    sed -i 's@<UrlBase></UrlBase>@<UrlBase>/lidarr</UrlBase>@g' /home/appbox/.config/Lidarr/config.xml
+
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+s6-setuidgid appbox
+
+bash -c "rm /home/appbox/.config/Lidarr/lidarr.pid; /usr/bin/mono --debug /home/appbox/appbox_installer/Lidarr/Lidarr.exe -nobrowser"
+EOF
+)
+    create_service 'lidarr'
+    configure_nginx 'lidarr' '8686'
+}
 
 # setup_bazarr() {
 #     s6-svc -d /run/s6/services/bazarr || true
@@ -536,33 +535,6 @@ EOF
 # EOF
 #     chown -R appbox:appbox /home/appbox/lazylibrarian
 #     configure_nginx 'lazylibrarian' '5299'
-# }
-
-# setup_ombi() {
-#     s6-svc -d /run/s6/services/ombi || true
-#     update-locale "LANG=en_US.UTF-8"
-#     locale-gen --purge "en_US.UTF-8"
-#     dpkg-reconfigure --frontend noninteractive locales
-#     echo "deb [arch=amd64,armhf] http://repo.ombi.turd.me/stable/ jessie main" | sudo tee "/etc/apt/sources.list.d/ombi.list"
-#     wget -qO - https://repo.ombi.turd.me/pubkey.txt | sudo apt-key add -
-#     apt update && apt -y install ombi || true
-#     chown -R appbox:appbox /opt
-#     mkdir -p /home/appbox/ombi
-#     chown -R appbox:appbox /home/appbox/ombi
-#     cat << EOF > /etc/supervisor/conf.d/ombi.conf
-# [program:ombi]
-# command=/bin/su -s /bin/bash -c "cd /opt/Ombi; /opt/Ombi/Ombi --baseurl /ombi --host http://*:5000 --storage /home/appbox/ombi/" appbox
-# autostart=true
-# autorestart=true
-# priority=5
-# stdout_events_enabled=true
-# stderr_events_enabled=true
-# stdout_logfile=/tmp/ombi.log
-# stdout_logfile_maxbytes=0
-# stderr_logfile=/tmp/ombi.log
-# stderr_logfile_maxbytes=0
-# EOF
-#     configure_nginx 'ombi' '5000'
 # }
 
 # setup_synclounge() {
@@ -891,6 +863,7 @@ install_prompt() {
     6) nzbget
     7) sabnzbdplus
     8) ombi
+    9) lidarr
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
@@ -929,6 +902,10 @@ install_prompt() {
             echo "Setting up ombi.."
             setup_ombi
             ;;
+        9|lidarr)
+            echo "Setting up lidarr.."
+            setup_lidarr
+            ;;
         # 3|flexget)
         #     echo "Setting up flexget.."
         #     setup_flexget
@@ -940,10 +917,6 @@ install_prompt() {
         # 11|synclounge)
         #     echo "Setting up synclounge.."
         #     setup_synclounge
-        #     ;;
-        # 12|lidarr)
-        #     echo "Setting up lidarr.."
-        #     setup_lidarr
         #     ;;
         # 13|bazarr)
         #     echo "Setting up bazarr.."
