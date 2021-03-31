@@ -72,11 +72,11 @@ setup_radarr() {
     chown -R appbox:appbox /home/appbox/.config
     # Generate config
     /bin/su -s /bin/bash -c "/home/appbox/appbox_installer/Radarr/Radarr" appbox &
-    until grep -q 'UrlBase' /home/appbox/appbox_installer/.config/Radarr/config.xml; do
+    until grep -q 'UrlBase' /home/appbox/.config/Radarr/config.xml; do
         sleep 1
     done
     kill -9 $(ps aux | grep 'Radarr' | grep -v 'bash' | awk '{print $2}')
-    sed -i 's@<UrlBase></UrlBase>@<UrlBase>/radarr</UrlBase>@g' /home/appbox/appbox_installer/.config/Radarr/config.xml
+    sed -i 's@<UrlBase></UrlBase>@<UrlBase>/radarr</UrlBase>@g' /home/appbox/.config/Radarr/config.xml
     create_service_files 'radarr'
 cat << EOF > /etc/services.d/radarr/run
 #!/bin/execlineb -P
