@@ -25,7 +25,7 @@ create_service_files() {
     echo "3" > /etc/services.d/${NAME}/notification-fd
     cat << EOF > /etc/services.d/${NAME}/log/run
 #!/bin/sh
-exec logutil-service /var/log/appbox/
+exec logutil-service /var/log/appbox/${NAME}
 EOF
     chmod +x /etc/services.d/${NAME}/log/run
     cp -R /etc/services.d/${NAME} /var/run/s6/services
