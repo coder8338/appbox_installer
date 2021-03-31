@@ -1,7 +1,7 @@
 # This is a work in progress, I am in the process of adding all apps.
 
 # Appbox Installer
-Appbox installer for radarr.
+Appbox installer for radarr, sonarr.
 
 ## How to run
 1. Install the [Ubuntu 20.04 app](https://www.appbox.co/appstore/app/210)
