@@ -21,7 +21,6 @@ run_as_root() {
 
 create_service() {
     NAME=$1
-    RUNNER=$2
     mkdir -p /etc/services.d/${NAME}/log
     echo "3" > /etc/services.d/${NAME}/notification-fd
     cat << EOF > /etc/services.d/${NAME}/log/run
@@ -29,10 +28,11 @@ create_service() {
 exec logutil-service /var/log/appbox/${NAME}
 EOF
     chmod +x /etc/services.d/${NAME}/log/run
-    echo ${RUNNER} > /etc/services.d/${NAME}/run
+    echo "${RUNNER}" > /etc/services.d/${NAME}/run
     chmod +x /etc/services.d/${NAME}/run
     cp -R /etc/services.d/${NAME} /var/run/s6/services
     kill -HUP 1
+    s6-svc -u /run/s6/services/${NAME}
 }
 
 configure_nginx() {
@@ -79,9 +79,9 @@ setup_radarr() {
     until grep -q 'UrlBase' /home/appbox/.config/Radarr/config.xml; do
         sleep 1
     done
-    kill -9 $(ps aux | grep 'Radarr' | grep -v 'bash' | awk '{print $2}')
+    pkill -f 'Radarr'
     sed -i 's@<UrlBase></UrlBase>@<UrlBase>/radarr</UrlBase>@g' /home/appbox/.config/Radarr/config.xml
-    create_service 'radarr' $(cat << EOF
+    RUNNER=$(cat << EOF
 #!/bin/execlineb -P
 
 # Redirect stderr to stdout.
@@ -92,6 +92,7 @@ s6-setuidgid appbox
 /bin/bash -c "rm /home/appbox/.config/Radarr/radarr.pid; /home/appbox/appbox_installer/Radarr/Radarr"
 EOF
 )
+    create_service 'radarr'
     configure_nginx 'radarr' '7878'
 }
 
