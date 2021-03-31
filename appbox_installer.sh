@@ -96,38 +96,38 @@ EOF
     configure_nginx 'radarr' '7878'
 }
 
-# setup_sonarr() {
-#     s6-svc -d /run/s6/services/sonarr || true
-#     apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 2009837CBFFD68F45BC180471F4F90DE2A9B4BF8
-#     echo "deb https://apt.sonarr.tv/ubuntu bionic main" | tee /etc/apt/sources.list.d/sonarr.list
-#     apt update
-#     apt install -y debconf-utils
-#     echo "sonarr sonarr/owning_user string appbox" | debconf-set-selections
-#     echo "sonarr sonarr/owning_group string appbox" | debconf-set-selections
-#     apt -y install sonarr libmediainfo0v5 || true
-#     # Generate config
-#     /bin/su -s /bin/bash -c "/usr/bin/mono --debug /usr/lib/sonarr/bin/Sonarr.exe -nobrowser" appbox &
-#     until grep -q 'UrlBase' /home/appbox/.config/Sonarr/config.xml; do
-#         sleep 1
-#     done
-#     sleep 5
-#     kill -9 $(ps aux | grep 'mono' | grep 'Sonarr.exe' | grep -v 'bash' | awk '{print $2}')
-#     sed -i 's@<UrlBase></UrlBase>@<UrlBase>/sonarr</UrlBase>@g' /home/appbox/.config/Sonarr/config.xml
-# cat << EOF > /etc/supervisor/conf.d/sonarr.conf
-# [program:sonarr]
-# command=/bin/su -s /bin/bash -c "rm /home/appbox/.config/Sonarr/sonarr.pid; /usr/bin/mono --debug /usr/lib/sonarr/bin/Sonarr.exe -nobrowser" appbox
-# autostart=true
-# autorestart=true
-# priority=5
-# stdout_events_enabled=true
-# stderr_events_enabled=true
-# stdout_logfile=/tmp/sonarr.log
-# stdout_logfile_maxbytes=0
-# stderr_logfile=/tmp/sonarr.log
-# stderr_logfile_maxbytes=0
-# EOF
-#     configure_nginx 'sonarr' '8989'
-# }
+setup_sonarr() {
+    s6-svc -d /run/s6/services/sonarr || true
+    apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 2009837CBFFD68F45BC180471F4F90DE2A9B4BF8
+    echo "deb https://apt.sonarr.tv/ubuntu focal main" | tee /etc/apt/sources.list.d/sonarr.list
+    apt update
+    apt install -y debconf-utils
+    echo "sonarr sonarr/owning_user string appbox" | debconf-set-selections
+    echo "sonarr sonarr/owning_group string appbox" | debconf-set-selections
+    apt -y install libmediainfo0v5 || true
+    apt -y install sonarr || true
+    # Generate config
+    /bin/su -s /bin/bash -c "/usr/bin/mono --debug /usr/lib/sonarr/bin/Sonarr.exe -nobrowser" appbox &
+    until grep -q 'UrlBase' /home/appbox/.config/Sonarr/config.xml; do
+        sleep 1
+    done
+    sleep 5
+    pkill -f 'Sonarr.exe'
+    sed -i 's@<UrlBase></UrlBase>@<UrlBase>/sonarr</UrlBase>@g' /home/appbox/.config/Sonarr/config.xml
+RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+s6-setuidgid appbox
+
+/bin/bash -c "rm /home/appbox/.config/Sonarr/sonarr.pid; /usr/bin/mono --debug /usr/lib/sonarr/bin/Sonarr.exe -nobrowser"
+EOF
+)
+    create_service 'sonarr'
+    configure_nginx 'sonarr' '8989'
+}
 
 # setup_lidarr() {
 #     s6-svc -d /run/s6/services/lidarr || true
@@ -864,6 +864,7 @@ install_prompt() {
     echo "Welcome to the install script, please select one of the following options to install:
     
     1) radarr
+    2) sonarr
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
@@ -874,10 +875,10 @@ install_prompt() {
             echo "Setting up radarr.."
             setup_radarr
             ;;
-        # 2|sonarr)
-        #     echo "Setting up sonarr.."
-        #     setup_sonarr
-        #     ;;
+        2|sonarr)
+            echo "Setting up sonarr.."
+            setup_sonarr
+            ;;
         # 3|flexget)
         #     echo "Setting up flexget.."
         #     setup_flexget
