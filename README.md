@@ -1,5 +1,7 @@
+# This is a work in progress, DO NOT USE YET!
+
 # Appbox Installer
-Appbox installer for VNC webui over SSL, radarr, sonarr, lidarr, bazarr, flexget, filebot, couchpotato, sickchill, medusa, lazylibrarian, nzbget, sabnzbdplus, ombi, jackett, synclounge, nzbhydra2, ngpost, pyload, organizr &amp; komga.
+Appbox installer for radarr, sonarr, lidarr, bazarr, flexget, filebot, couchpotato, sickchill, medusa, lazylibrarian, nzbget, sabnzbdplus, ombi, jackett, synclounge, nzbhydra2, ngpost, pyload, organizr &amp; komga.
 
 ## How to run
 1. Install the [Ubuntu VNC app](https://www.appbox.co/appstore/app/97)
@@ -11,19 +13,19 @@ Appbox installer for VNC webui over SSL, radarr, sonarr, lidarr, bazarr, flexget
 ## How to manage services
 To stop a service:
 
-`sudo supervisorctl stop <service name>`
+``
 
 To start a service:
 
-`sudo supervisorctl start <service name>`
+``
 
 To restart a service:
 
-`sudo supervisorctl restart <service name>`
+``
 
 For example, to stop radarr you would run:
 
-`sudo supervisorctl stop radarr`
+``
 
 ## How to view log files
 The log for each service is found in `/tmp` the format is: `/tmp/<service name>.log`
