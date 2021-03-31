@@ -216,8 +216,7 @@ EOF
     chmod +x /etc/init.d/couchpotato
     sed -i 's/--daemon//g' /etc/init.d/couchpotato
     sed -i 's/--quiet//g' /etc/init.d/couchpotato
-    chown -R appbox:appbox /home/appbox/appbox_installer/couchpotato/CouchPotatoData
-    chown -R appbox:appbox /home/appbox/appbox_installer/couchpotato/CouchPotatoServer
+    chown -R appbox:appbox /home/appbox/appbox_installer/couchpotato/
     RUNNER=$(cat << EOF
 #!/bin/execlineb -P
 
