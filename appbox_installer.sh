@@ -51,7 +51,7 @@ configure_nginx() {
     \e[4mhttps://${HOSTNAME}/${NAME}\e[39m\e[0m
     
     You can continue the configuration from there.
-    \e[96mMake sure you protect the app by setting up and username/password in the app's settings!\e[39m
+    \e[96mMake sure you protect the app by setting up a username/password in the app's settings!\e[39m
     
     \e[91mIf you want to use another appbox app in the settings of ${NAME}, make sure you access it on port 80, and without https, for example:
     \e[4mhttp://rutorrent.${APPBOX_USER}.appboxes.co\e[39m\e[0m
@@ -253,6 +253,60 @@ EOF
 )
     create_service 'nzbget'
     configure_nginx 'nzbget' '6789'
+}
+
+setup_sabnzbdplus() {
+    s6-svc -d /run/s6/services/sabnzbd || true
+    add-apt-repository -y ppa:jcfp/ppa
+    apt-get install -y sabnzbdplus
+    sed -i 's/--daemon//g' /etc/init.d/sabnzbdplus
+    cat << EOF > /etc/default/sabnzbdplus
+USER=appbox
+HOST=0.0.0.0
+PORT=9090
+EXTRAOPTS=-b0
+EOF
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+/etc/init.d/sabnzbdplus start
+EOF
+)
+    create_service 'sabnzbd'
+    configure_nginx 'sabnzbd' '9090'
+}
+
+setup_ombi() {
+    s6-svc -d /run/s6/services/ombi || true
+    update-locale "LANG=en_US.UTF-8"
+    locale-gen --purge "en_US.UTF-8"
+    dpkg-reconfigure --frontend noninteractive locales
+    echo "deb [arch=amd64,armhf] http://repo.ombi.turd.me/stable/ jessie main" | sudo tee "/etc/apt/sources.list.d/ombi.list"
+    wget -qO - https://repo.ombi.turd.me/pubkey.txt | sudo apt-key add -
+    mkdir -p opt
+    apt update
+    apt -y install ombi
+    mv /opt/Ombi /home/appbox/appbox_installer/ombiServer
+    mkdir -p /home/appbox/appbox_installer/ombiData
+    chown -R appbox:appbox /home/appbox/appbox_installer/ombiData
+    chown -R appbox:appbox /home/appbox/appbox_installer/ombiServer
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+s6-setuidgid appbox
+
+cd /home/appbox/appbox_installer/ombiServer
+/home/appbox/appbox_installer/ombiServer/Ombi --baseurl /ombi --host http://*:5000 --storage /home/appbox/appbox_installer/ombiData/
+EOF
+)
+    create_service 'ombi'
+    configure_nginx 'ombi' '5000'
 }
 
 # setup_lidarr() {
@@ -482,33 +536,6 @@ EOF
 # EOF
 #     chown -R appbox:appbox /home/appbox/lazylibrarian
 #     configure_nginx 'lazylibrarian' '5299'
-# }
-
-# setup_sabnzbdplus() {
-#     s6-svc -d /run/s6/services/sabnzbd || true
-#     add-apt-repository -y ppa:jcfp/ppa
-#     apt-get install -y sabnzbdplus
-#     sed -i 's/--daemon//g' /etc/init.d/sabnzbdplus
-#     cat << EOF > /etc/supervisor/conf.d/sabnzbdplus.conf
-# [program:sabnzbdplus]
-# command=/etc/init.d/sabnzbdplus start
-# autostart=true
-# autorestart=true
-# priority=5
-# stdout_events_enabled=true
-# stderr_events_enabled=true
-# stdout_logfile=/tmp/sabnzbdplus.log
-# stdout_logfile_maxbytes=0
-# stderr_logfile=/tmp/sabnzbdplus.log
-# stderr_logfile_maxbytes=0
-# EOF
-#     cat << EOF > /etc/default/sabnzbdplus
-# USER=appbox
-# HOST=0.0.0.0
-# PORT=9090
-# EXTRAOPTS=-b0
-# EOF
-#     configure_nginx 'sabnzbd' '9090'
 # }
 
 # setup_ombi() {
@@ -862,6 +889,8 @@ install_prompt() {
     4) jackett
     5) couchpotato
     6) nzbget
+    7) sabnzbdplus
+    8) ombi
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
@@ -892,6 +921,14 @@ install_prompt() {
             echo "Setting up nzbget.."
             setup_nzbget
             ;;
+        7|sabnzbdplus)
+            echo "Setting up sabnzbdplus.."
+            setup_sabnzbdplus
+            ;;
+        8|ombi)
+            echo "Setting up ombi.."
+            setup_ombi
+            ;;
         # 3|flexget)
         #     echo "Setting up flexget.."
         #     setup_flexget
@@ -899,14 +936,6 @@ install_prompt() {
         # 4|filebot)
         #     echo "Setting up filebot.."
         #     setup_filebot
-        #     ;;
-        # 8|sabnzbdplus)
-        #     echo "Setting up sabnzbdplus.."
-        #     setup_sabnzbdplus
-        #     ;;
-        # 9|ombi)
-        #     echo "Setting up ombi.."
-        #     setup_ombi
         #     ;;
         # 11|synclounge)
         #     echo "Setting up synclounge.."
