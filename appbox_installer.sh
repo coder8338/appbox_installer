@@ -589,6 +589,25 @@ EOF
     Installation sucessful! Please launch filebot using the \"Applications\" menu on the top left of your screen."
 }
 
+setup_synclounge() {
+    s6-svc -d /run/s6/services/synclounge || true
+    apt install -y git npm
+    npm install -g synclounge
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+s6-setuidgid appbox
+
+/usr/local/bin/synclounge
+EOF
+)
+    create_service 'synclounge'
+    configure_nginx 'synclounge/' '8088'
+}
+
 # setup_medusa() {
 #     s6-svc -d /run/s6/services/medusa || true
 #     apt install -y git unrar-free git openssl libssl-dev python3-pip python3-distutils python3.7 mediainfo || true
@@ -660,51 +679,6 @@ EOF
 # EOF
 #     chown -R appbox:appbox /home/appbox/lazylibrarian
 #     configure_nginx 'lazylibrarian' '5299'
-# }
-
-# setup_synclounge() {
-#     s6-svc -d /run/s6/services/synclounge_server || true
-#     s6-svc -d /run/s6/services/synclounge || true
-#     apt install -y git npm
-#     git clone --depth 1 https://github.com/samcm/SyncLounge /opt/synclounge
-#     cd /opt/synclounge
-#     npm install
-#     sed -i 's@"webroot": ""@"webroot": "/synclounge"@g' /opt/synclounge/settings.json
-#     sed -i 's@"accessUrl": ""@"accessUrl": "https://'"${HOSTNAME}"'/synclounge"@g' /opt/synclounge/settings.json
-#     sed -i 's@"serverroot": ""@"serverroot": "/synclounge_server"@g' /opt/synclounge/settings.json
-#     sed -i 's@"autoJoin": false@"autoJoin": true@g' /opt/synclounge/settings.json
-#     sed -i 's@"autoJoinServer": ""@"autoJoinServer": "http://'"${HOSTNAME}"'/synclounge_server"@g' /opt/synclounge/settings.json
-#     sed -i '/webroot/a \ \ \ \ "customServer": "http://'"${HOSTNAME}"'/synclounge_server",' /opt/synclounge/settings.json
-#     npm run build
-#     chown -R appbox:appbox /opt/synclounge
-#     cat << EOF > /etc/supervisor/conf.d/synclounge_webapp.conf
-# [program:synclounge_webapp]
-# command=/bin/su -s /bin/bash -c "cd /opt/synclounge && node webapp.js" appbox
-# autostart=true
-# autorestart=true
-# priority=5
-# stdout_events_enabled=true
-# stderr_events_enabled=true
-# stdout_logfile=/tmp/synclounge_webapp.log
-# stdout_logfile_maxbytes=0
-# stderr_logfile=/tmp/synclounge_webapp.log
-# stderr_logfile_maxbytes=0
-# EOF
-#     cat << EOF > /etc/supervisor/conf.d/synclounge_server.conf
-# [program:synclounge_server]
-# command=/bin/su -s /bin/bash -c "cd /opt/synclounge && npm run server" appbox
-# autostart=true
-# autorestart=true
-# priority=5
-# stdout_events_enabled=true
-# stderr_events_enabled=true
-# stdout_logfile=/tmp/synclounge_server.log
-# stdout_logfile_maxbytes=0
-# stderr_logfile=/tmp/synclounge_server.log
-# stderr_logfile_maxbytes=0
-# EOF
-#     configure_nginx 'synclounge_server' '8088'
-#     configure_nginx 'synclounge' '8088'
 # }
 
 # setup_ngpost() {
@@ -868,6 +842,7 @@ install_prompt() {
     12) bazarr
     13) flexget
     14) filebot
+    15) synclounge
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
@@ -930,10 +905,10 @@ install_prompt() {
             echo "Setting up filebot.."
             setup_filebot
             ;;
-        # 11|synclounge)
-        #     echo "Setting up synclounge.."
-        #     setup_synclounge
-        #     ;;
+        15|synclounge)
+            echo "Setting up synclounge.."
+            setup_synclounge
+            ;;
         # 14|medusa)
         #     echo "Setting up medusa.."
         #     setup_medusa
