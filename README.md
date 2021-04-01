@@ -14,19 +14,19 @@ Appbox installer for radarr, sonarr, sickchill, jackett, couchpotato, nzbget, sa
 ## How to manage services
 To stop a service:
 
-`s6-svc -d /run/s6/services/<service name>/`
+`sudo s6-svc -d /run/s6/services/<service name>/`
 
 To start a service:
 
-`s6-svc -u /run/s6/services/<service name>/`
+`sudo s6-svc -u /run/s6/services/<service name>/`
 
 To restart a service:
 
-`s6-svc -r /run/s6/services/<service name>/`
+`sudo s6-svc -r /run/s6/services/<service name>/`
 
 For example, to stop radarr you would run:
 
-`s6-svc -d /run/s6/services/radarr/`
+`sudo s6-svc -d /run/s6/services/radarr/`
 
 ## How to view log files
 The log for each service is found in `/var/log/appbox/` the format is: `/var/log/appbox/<service name>/current`
@@ -41,7 +41,7 @@ Q: I want auto moving from my torrent client to anywhere using Radarr/Sonarr
 A: You'll need to mirror the torrent client's directories using:
 
 ```
-ln -s /APPBOX_DATA/apps/<TORRENT CLIENT>.<YOUR APPBOX NAME>.appboxes.co/torrents/ /torrents
-ln -s /APPBOX_DATA/apps/ /torrents/home/apps
-ln -s /APPBOX_DATA/storage/ /torrents/home/storage
+sudo ln -s /APPBOX_DATA/apps/<TORRENT CLIENT>.<YOUR APPBOX NAME>.appboxes.co/torrents/ /torrents
+sudo ln -s /APPBOX_DATA/apps/ /torrents/home/apps
+sudo ln -s /APPBOX_DATA/storage/ /torrents/home/storage
 ```
