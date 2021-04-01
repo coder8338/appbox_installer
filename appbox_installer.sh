@@ -503,7 +503,7 @@ setup_flexget() {
     pip3 install flexget[webui]
     mkdir -p /home/appbox/.config/flexget
     chown -R appbox:appbox /home/appbox/.config/flexget
-cat << EOF > /home/appbox/.config/flexget/config.yml
+    cat << EOF > /home/appbox/.config/flexget/config.yml
 templates:
   Example-Template:
     accept_all: yes
@@ -555,34 +555,39 @@ EOF
     configure_nginx 'flexget' '9797'
 }
 
-# setup_filebot() {
-#     # https://www.oracle.com/webapps/redirect/signon?nexturl=https://download.oracle.com/otn/java/jdk/11.0.4+10/cf1bbcbf431a474eb9fc550051f4ee78/jdk-11.0.4_linux-x64_bin.tar.gz
-#     mkdir -p /var/cache/oracle-jdk11-installer-local
-#     wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/jdk-11.0.9_linux-x64_bin.tar.gz --header "Cookie: oraclelicense=accept-securebackup-cookie" https://download.oracle.com/otn-pub/java/jdk/11.0.9%2B7/eec35ebefb3f4133bd045b891f05db94/jdk-11.0.9_linux-x64_bin.tar.gz
-#     add-apt-repository -y ppa:linuxuprising/java
-#     apt update
-#     echo debconf shared/accepted-oracle-license-v1-2 select true | debconf-set-selections
-#     echo debconf shared/accepted-oracle-license-v1-2 seen true | debconf-set-selections
-#     apt-get install -y oracle-java11-installer-local libchromaprint-tools || true
-#     sed -i 's/tar xzf $FILENAME/tar xzf $FILENAME --no-same-owner/g' /var/lib/dpkg/info/oracle-java11-installer-local.postinst
-#     dpkg --configure -a
-#     mkdir /opt/filebot && cd /opt/filebot
-#     sh -xu <<< "$(curl -fsSL https://raw.githubusercontent.com/filebot/plugins/master/installer/tar.sh)"
-#         cat << EOF > /home/appbox/Desktop/Filebot.desktop
-# #!/usr/bin/env xdg-open
-# [Desktop Entry]
-# Version=1.0
-# Type=Application
-# Terminal=false
-# Exec=/usr/local/bin/filebot
-# Name=Filebot
-# Comment=Filebot
-# EOF
-#     chown appbox:appbox /home/appbox/Desktop/Filebot.desktop
-#     chmod +x /home/appbox/Desktop/Filebot.desktop
-#     echo -e "\n\n\n\n\n
-#     Installation sucessful! Please launch filebot using the icon on your desktop."
-# }
+setup_filebot() {
+    mkdir -p /var/cache/oracle-jdk11-installer-local
+    wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/jdk-11.0.10_linux-x64_bin.tar.gz https://github.com/coder8338/appbox_installer/releases/download/bin/asd8923ehsa.tar.gz
+    add-apt-repository -y ppa:linuxuprising/java
+    apt update
+    echo debconf shared/accepted-oracle-license-v1-2 select true | debconf-set-selections
+    echo debconf shared/accepted-oracle-license-v1-2 seen true | debconf-set-selections
+    apt-get install -y oracle-java11-installer-local libchromaprint-tools || true
+    sed -i 's/tar xzf $FILENAME/tar xzf $FILENAME --no-same-owner/g' /var/lib/dpkg/info/oracle-java11-installer-local.postinst
+    dpkg --configure -a
+    mkdir /home/appbox/appbox_installer/filebot && cd /home/appbox/appbox_installer/filebot
+    wget -O /usr/share/pixmaps/filebot.png https://www.filebot.net/icon.png
+    sh -xu <<< "$(curl -fsSL https://raw.githubusercontent.com/filebot/plugins/master/installer/tar.sh)"
+    cat << EOF > /usr/share/applications/filebot.desktop
+[Desktop Entry]
+Version=1.0
+Name=Filebot
+GenericName=Filebot
+X-GNOME-FullName=Filebot
+TryExec=filebot
+Exec=filebot
+Terminal=false
+Icon=filebot
+Type=Application
+Categories=Network;FileTransfer;GTK;
+StartupWMClass=filebot
+StartupNotify=true
+X-GNOME-UsesNotifications=true
+EOF
+    chown -R appbox:appbox /home/appbox/appbox_installer/filebot
+    echo -e "\n\n\n\n\n
+    Installation sucessful! Please launch filebot using the \"Applications\" menu on the top left of your screen."
+}
 
 # setup_medusa() {
 #     s6-svc -d /run/s6/services/medusa || true
@@ -862,6 +867,7 @@ install_prompt() {
     11) nzbhydra2
     12) bazarr
     13) flexget
+    14) filebot
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
@@ -920,10 +926,10 @@ install_prompt() {
             echo "Setting up flexget.."
             setup_flexget
             ;;
-        # 4|filebot)
-        #     echo "Setting up filebot.."
-        #     setup_filebot
-        #     ;;
+        14|filebot)
+            echo "Setting up filebot.."
+            setup_filebot
+            ;;
         # 11|synclounge)
         #     echo "Setting up synclounge.."
         #     setup_synclounge
