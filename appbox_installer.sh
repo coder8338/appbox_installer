@@ -339,6 +339,86 @@ EOF
     configure_nginx 'lidarr' '8686'
 }
 
+setup_organizr() {
+    s6-svc -d /run/s6/services/php-fpm || true
+    apt install -y php-mysql php-sqlite3 sqlite3 php-xml php-zip php-curl php-fpm git
+    mkdir -p /run/php
+    mkdir -p /home/appbox/appbox_installer/organizr
+    git clone --depth 1 -b v2-master https://github.com/causefx/Organizr /home/appbox/appbox_installer/organizr/organizr
+
+    echo "Configuring PHP to use sockets"
+
+    if [ ! -f /etc/php/7.4/fpm/pool.d/www.conf.original ]; then
+        cp /etc/php/7.4/fpm/pool.d/www.conf /etc/php/7.4/fpm/pool.d/www.conf.original
+    fi
+
+    # TODO: Check if settings catch
+    # enable PHP-FPM
+    sed -i "s#www-data#appbox#g" /etc/php/7.4/fpm/pool.d/www.conf
+    sed -i "s#;listen.mode = 0660#listen.mode = 0777#g" /etc/php/7.4/fpm/pool.d/www.conf
+    # set our recommended defaults
+    sed -i "s#pm = dynamic#pm = ondemand#g" /etc/php/7.4/fpm/pool.d/www.conf
+    sed -i "s#pm.max_children = 5#pm.max_children = 4000#g" /etc/php/7.4/fpm/pool.d/www.conf
+    sed -i "s#pm.start_servers = 2#;pm.start_servers = 2#g" /etc/php/7.4/fpm/pool.d/www.conf
+    sed -i "s#;pm.process_idle_timeout = 10s;#pm.process_idle_timeout = 10s;#g" /etc/php/7.4/fpm/pool.d/www.conf
+    sed -i "s#;pm.max_requests = 500#pm.max_requests = 0#g" /etc/php/7.4/fpm/pool.d/www.conf
+    chown -R appbox:appbox /var/lib/php
+
+        cat << EOF > /etc/nginx/sites-enabled/organizr
+# V0.0.4
+server {
+  listen 8009;
+  root /home/appbox/appbox_installer/organizr;
+  index index.html index.htm index.php;
+
+  server_name _;
+  client_max_body_size 0;
+
+  # Real Docker IP
+  # Make sure to update the IP range with your Docker IP subnet
+  real_ip_header X-Forwarded-For;
+  #set_real_ip_from 172.17.0.0/16;
+  real_ip_recursive on;
+
+  # Deny access to Org .git directory
+  location ~ /\.git {
+    deny all;
+  }
+
+  location /organizr {
+    try_files \$uri \$uri/ /organizr/index.html /organizr/index.php?\$args =404;
+  }
+
+  location /organizr/api/v2 {
+    try_files \$uri /organizr/api/v2/index.php\$is_args\$args;
+  }
+
+  location ~ \.php$ {
+    fastcgi_split_path_info ^(.+?\.php)(\/.*|)$;
+    fastcgi_pass unix:/run/php/php7.4-fpm.sock;
+    fastcgi_index index.php;
+    include fastcgi_params;
+    fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+    fastcgi_buffers 32 32k;
+    fastcgi_buffer_size 32k;
+  }
+}
+EOF
+
+    chown -R appbox:appbox /home/appbox/appbox_installer/organizr /run/php
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+/usr/sbin/php-fpm7.4 -F
+EOF
+)
+    create_service 'php-fpm'
+    configure_nginx 'organizr/' '8009'
+}
+
 # setup_bazarr() {
 #     s6-svc -d /run/s6/services/bazarr || true
 #     apt update
@@ -734,91 +814,6 @@ EOF
 #     configure_nginx 'deemixrr' '5555'
 # }
 
-# setup_organizr() {
-#     s6-svc -d /run/s6/services/php-fpm || true
-#     apt install -y php-mysql php-sqlite3 sqlite3 php-xml php-zip php-curl php-fpm git
-#     mkdir -p /run/php
-#     mkdir -p /opt/organizr
-#     git clone --depth 1 -b v2-master https://github.com/causefx/Organizr /opt/organizr/organizr
-
-#     echo "Configuring PHP to use sockets"
-
-#     if [ ! -f /etc/php/7.4/fpm/pool.d/www.conf.original ]; then
-#         cp /etc/php/7.4/fpm/pool.d/www.conf /etc/php/7.4/fpm/pool.d/www.conf.original
-#     fi
-
-#     # TODO: Check if settings catch
-#     # enable PHP-FPM
-#     sed -i "s#www-data#appbox#g" /etc/php/7.4/fpm/pool.d/www.conf
-#     sed -i "s#;listen.mode = 0660#listen.mode = 0777#g" /etc/php/7.4/fpm/pool.d/www.conf
-#     # set our recommended defaults
-#     sed -i "s#pm = dynamic#pm = ondemand#g" /etc/php/7.4/fpm/pool.d/www.conf
-#     sed -i "s#pm.max_children = 5#pm.max_children = 4000#g" /etc/php/7.4/fpm/pool.d/www.conf
-#     sed -i "s#pm.start_servers = 2#;pm.start_servers = 2#g" /etc/php/7.4/fpm/pool.d/www.conf
-#     sed -i "s#;pm.process_idle_timeout = 10s;#pm.process_idle_timeout = 10s;#g" /etc/php/7.4/fpm/pool.d/www.conf
-#     sed -i "s#;pm.max_requests = 500#pm.max_requests = 0#g" /etc/php/7.4/fpm/pool.d/www.conf
-#     chown -R appbox:appbox /var/lib/php
-
-#         cat << EOF > /etc/nginx/sites-enabled/organizr
-# # V0.0.4
-# server {
-#   listen 8009;
-#   root /opt/organizr;
-#   index index.html index.htm index.php;
-
-#   server_name _;
-#   client_max_body_size 0;
-
-#   # Real Docker IP
-#   # Make sure to update the IP range with your Docker IP subnet
-#   real_ip_header X-Forwarded-For;
-#   #set_real_ip_from 172.17.0.0/16;
-#   real_ip_recursive on;
-
-#   # Deny access to Org .git directory
-#   location ~ /\.git {
-#     deny all;
-#   }
-
-#   location /organizr {
-#     try_files \$uri \$uri/ /organizr/index.html /organizr/index.php?\$args =404;
-#   }
-
-#   location /organizr/api/v2 {
-#     try_files \$uri /organizr/api/v2/index.php\$is_args\$args;
-#   }
-
-#   location ~ \.php$ {
-#     fastcgi_split_path_info ^(.+?\.php)(\/.*|)$;
-#     fastcgi_pass unix:/run/php/php7.4-fpm.sock;
-#     fastcgi_index index.php;
-#     include fastcgi_params;
-#     fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
-#     fastcgi_buffers 32 32k;
-#     fastcgi_buffer_size 32k;
-#   }
-# }
-# EOF
-
-#     chown -R appbox:appbox /opt/organizr /run/php
-
-#     cat << EOF > /etc/supervisor/conf.d/php-fpm.conf
-# [program:php-fpm]
-# command=/usr/sbin/php-fpm7.4 -F
-# autostart=true
-# autorestart=true
-# priority=5
-# stdout_events_enabled=true
-# stderr_events_enabled=true
-# stdout_logfile=/tmp/php-fpm.log
-# stdout_logfile_maxbytes=0
-# stderr_logfile=/tmp/php-fpm.log
-# stderr_logfile_maxbytes=0
-# EOF
-
-#     configure_nginx 'organizr/' '8009'
-# }
-
 # setup_komga() {
 #     s6-svc -d /run/s6/services/komga || true
 #     mkdir -p /var/cache/oracle-jdk11-installer-local
@@ -863,6 +858,7 @@ install_prompt() {
     7) sabnzbdplus
     8) ombi
     9) lidarr
+    10) organizr
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
@@ -905,6 +901,10 @@ install_prompt() {
             echo "Setting up lidarr.."
             setup_lidarr
             ;;
+        10|organizr)
+            echo "Setting up organizr.."
+            setup_organizr
+            ;;
         # 3|flexget)
         #     echo "Setting up flexget.."
         #     setup_flexget
@@ -941,10 +941,6 @@ install_prompt() {
         #     echo "Setting up pyload.."
         #     setup_pyload
         #     ;;
-        # 19|organizr)
-        #     echo "Setting up organizr.."
-        #     setup_organizr
-        #     ;;
         # 20|komga)
         #     echo "Setting up komga.."
         #     setup_komga
@@ -957,6 +953,7 @@ install_prompt() {
 }
 
 run_as_root
+sed -i 's/www-data/appbox/g' /etc/nginx/nginx.conf
 echo -e "\nEnsuring appbox_installer folder exists..."
 mkdir -p /home/appbox/appbox_installer
 echo -e "\nUpdating apt packages..."
