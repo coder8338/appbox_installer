@@ -36,14 +36,21 @@ EOF
 }
 
 configure_nginx() {
-    NAME=$1
-    PORT=$2
+    NAME=${1}
+    PORT=${2}
+    OPTION=${3:-default}
     APPBOX_USER=$(echo "${HOSTNAME}" | awk -F'.' '{print $2}')
     if ! grep -q "/${NAME} {" /etc/nginx/sites-enabled/default; then
         sed -i '/server_name _/a \
         location /'${NAME}' {\
                 proxy_pass http://127.0.0.1:'${PORT}';\
         }' /etc/nginx/sites-enabled/default
+
+        if [ "${OPTION}" == 'subfilter' ]; then
+            sed -i '/location \/'${NAME}' /a \
+                sub_filter "http://"  "https://";\
+                sub_filter_once off;' /etc/nginx/sites-enabled/default
+        fi
     fi
     pkill -HUP nginx
     echo -e "\n\n\n\n\n
@@ -89,7 +96,8 @@ fdmove -c 2 1
 
 s6-setuidgid appbox
 
-bash -c "rm /home/appbox/.config/Radarr/radarr.pid; /home/appbox/appbox_installer/Radarr/Radarr"
+foreground { rm /home/appbox/.config/Radarr/radarr.pid }
+/home/appbox/appbox_installer/Radarr/Radarr
 EOF
 )
     create_service 'radarr'
@@ -122,7 +130,8 @@ fdmove -c 2 1
 
 s6-setuidgid appbox
 
-bash -c "rm /home/appbox/.config/Sonarr/sonarr.pid; /usr/bin/mono --debug /usr/lib/sonarr/bin/Sonarr.exe -nobrowser"
+foreground { rm /home/appbox/.config/Sonarr/sonarr.pid }
+/usr/bin/mono --debug /usr/lib/sonarr/bin/Sonarr.exe -nobrowser"
 EOF
 )
     create_service 'sonarr'
@@ -154,7 +163,9 @@ EOF
 # Redirect stderr to stdout.
 fdmove -c 2 1
 
-/etc/init.d/sickchill start
+s6-setuidgid appbox
+
+/usr/bin/python3 SickChill.py -q --nolaunch --pidfile=/var/run/sickchill/sickchill.pid --datadir=/home/appbox/appbox_installer/sickchill/
 EOF
 )
     chown -R appbox:appbox /home/appbox/appbox_installer/sickchill
@@ -223,7 +234,9 @@ EOF
 # Redirect stderr to stdout.
 fdmove -c 2 1
 
-/etc/init.d/couchpotato start
+s6-setuidgid appbox
+
+/usr/bin/python CouchPotato.py --pid_file=/var/run/couchpotato/couchpotato.pid --data_dir=/home/appbox/appbox_installer/couchpotato/CouchPotatoData
 EOF
 )
     create_service 'couchpotato'
@@ -271,7 +284,9 @@ EOF
 # Redirect stderr to stdout.
 fdmove -c 2 1
 
-/etc/init.d/sabnzbdplus start
+s6-setuidgid appbox
+
+/usr/bin/python3 -OO /usr/bin/sabnzbdplus --pidfile /var/run/sabnzbdplus/pid --server 0.0.0.0:9090 -b0
 EOF
 )
     create_service 'sabnzbd'
@@ -300,7 +315,8 @@ fdmove -c 2 1
 
 s6-setuidgid appbox
 
-bash -c "cd /home/appbox/appbox_installer/ombiServer; /home/appbox/appbox_installer/ombiServer/Ombi --baseurl /ombi --host http://*:5000 --storage /home/appbox/appbox_installer/ombiData/"
+cd /home/appbox/appbox_installer/ombiServer
+/home/appbox/appbox_installer/ombiServer/Ombi --baseurl /ombi --host http://*:5000 --storage /home/appbox/appbox_installer/ombiData/
 EOF
 )
     create_service 'ombi'
@@ -332,7 +348,8 @@ fdmove -c 2 1
 
 s6-setuidgid appbox
 
-bash -c "rm /home/appbox/.config/Lidarr/lidarr.pid; /usr/bin/mono --debug /home/appbox/appbox_installer/Lidarr/Lidarr.exe -nobrowser"
+foreground { rm /home/appbox/.config/Lidarr/lidarr.pid }
+/usr/bin/mono --debug /home/appbox/appbox_installer/Lidarr/Lidarr.exe -nobrowser
 EOF
 )
     create_service 'lidarr'
@@ -608,42 +625,41 @@ EOF
     configure_nginx 'synclounge/' '8088'
 }
 
-# setup_medusa() {
-#     s6-svc -d /run/s6/services/medusa || true
-#     apt install -y git unrar-free git openssl libssl-dev python3-pip python3-distutils python3.7 mediainfo || true
-#     git clone --depth 1 https://github.com/pymedusa/Medusa.git /home/appbox/medusa
-#     cp /home/appbox/medusa/runscripts/init.ubuntu /etc/init.d/medusa
-#     chmod +x /etc/init.d/medusa
-#     sed -i 's/--daemon//g' /etc/init.d/medusa
-#     cat << EOF > /etc/default/medusa
-# APP_HOME=/home/appbox/medusa/
-# APP_DATA=/home/appbox/medusa/
-# APP_USER=appbox
-# EOF
-#     cat << EOF >/home/appbox/medusa/config.ini
-# [General]
-#   web_host = 0.0.0.0
-#   handle_reverse_proxy = 1
-#   launch_browser = 0
-#   web_root = "/medusa"
-#   web_port = 8082
-# EOF
-#     cat << EOF > /etc/supervisor/conf.d/medusa.conf
-# [program:medusa]
-# command=/etc/init.d/medusa start
-# autostart=true
-# autorestart=true
-# priority=5
-# stdout_events_enabled=true
-# stderr_events_enabled=true
-# stdout_logfile=/tmp/medusa.log
-# stdout_logfile_maxbytes=0
-# stderr_logfile=/tmp/medusa.log
-# stderr_logfile_maxbytes=0
-# EOF
-#     chown -R appbox:appbox /home/appbox/medusa
-#     configure_nginx 'medusa' '8082'
-# }
+setup_medusa() {
+    s6-svc -d /run/s6/services/medusa || true
+    apt install -y git unrar-free git openssl libssl-dev python3-pip python3-distutils python3 mediainfo || true
+    git clone --depth 1 https://github.com/pymedusa/Medusa.git /home/appbox/appbox_installer/medusa
+    cp /home/appbox/appbox_installer/medusa/runscripts/init.ubuntu /etc/init.d/medusa
+    chmod +x /etc/init.d/medusa
+    sed -i 's/--daemon//g' /etc/init.d/medusa
+    cat << EOF > /etc/default/medusa
+APP_HOME=/home/appbox/appbox_installer/medusa/
+APP_DATA=/home/appbox/appbox_installer/medusa/
+APP_USER=appbox
+EOF
+    cat << EOF >/home/appbox/appbox_installer/medusa/config.ini
+[General]
+  web_host = 0.0.0.0
+  handle_reverse_proxy = 1
+  launch_browser = 0
+  web_use_gzip = false
+  web_root = "/medusa"
+  web_port = 8082
+EOF
+    chown -R appbox:appbox /home/appbox/appbox_installer/medusa
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+cd /home/appbox/appbox_installer/medusa
+/usr/bin/python3 start.py -q --nolaunch --pidfile=/var/run/PyMedusa/Medusa.pid --datadir=/home/appbox/appbox_installer/medusa/
+EOF
+)
+    create_service 'medusa'
+    configure_nginx 'medusa' '8082' 'subfilter'
+}
 
 # setup_lazylibrarian() {
 #     s6-svc -d /run/s6/services/lazylibrarian || true
@@ -843,6 +859,7 @@ install_prompt() {
     13) flexget
     14) filebot
     15) synclounge
+    16) medusa
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
@@ -909,10 +926,10 @@ install_prompt() {
             echo "Setting up synclounge.."
             setup_synclounge
             ;;
-        # 14|medusa)
-        #     echo "Setting up medusa.."
-        #     setup_medusa
-        #     ;;
+        16|medusa)
+            echo "Setting up medusa.."
+            setup_medusa
+            ;;
         # 15|lazylibrarian)
         #     echo "Setting up lazylibrarian.."
         #     setup_lazylibrarian
