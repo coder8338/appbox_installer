@@ -602,6 +602,7 @@ StartupNotify=true
 X-GNOME-UsesNotifications=true
 EOF
     chown -R appbox:appbox /home/appbox/appbox_installer/filebot
+    pkill -HUP -f 'wingpanel'
     echo -e "\n\n\n\n\n
     Installation sucessful! Please launch filebot using the \"Applications\" menu on the top left of your screen."
 }
@@ -661,104 +662,142 @@ EOF
     configure_nginx 'medusa' '8082' 'subfilter'
 }
 
-# setup_lazylibrarian() {
-#     s6-svc -d /run/s6/services/lazylibrarian || true
-#     apt install -y git unrar-free git openssl libssl-dev python3-pip python3-distutils python3.7 mediainfo || true
-#     git clone --depth 1 https://gitlab.com/LazyLibrarian/LazyLibrarian.git /home/appbox/lazylibrarian
-#     cp /home/appbox/lazylibrarian/init/lazylibrarian.initd /etc/init.d/lazylibrarian
-#     chmod +x /etc/init.d/lazylibrarian
-#     sed -i 's/--daemon//g' /etc/init.d/lazylibrarian
-#     cat << EOF > /etc/default/lazylibrarian
-# CONFIG=/home/appbox/lazylibrarian/config.ini
-# APP_PATH=/home/appbox/lazylibrarian/
-# DATADIR=/home/appbox/lazylibrarian/
-# RUN_AS=appbox
-# EOF
-#     cat << EOF >/home/appbox/lazylibrarian/config.ini
-# [General]
-#   http_host = 0.0.0.0
-#   launch_browser = 0
-#   http_root = "/lazylibrarian"
-# EOF
-#     cat << EOF > /etc/supervisor/conf.d/lazylibrarian.conf
-# [program:lazylibrarian]
-# command=/etc/init.d/lazylibrarian start
-# autostart=true
-# autorestart=true
-# priority=5
-# stdout_events_enabled=true
-# stderr_events_enabled=true
-# stdout_logfile=/tmp/lazylibrarian.log
-# stdout_logfile_maxbytes=0
-# stderr_logfile=/tmp/lazylibrarian.log
-# stderr_logfile_maxbytes=0
-# EOF
-#     chown -R appbox:appbox /home/appbox/lazylibrarian
-#     configure_nginx 'lazylibrarian' '5299'
-# }
+setup_lazylibrarian() {
+    s6-svc -d /run/s6/services/lazylibrarian || true
+    apt install -y git unrar-free git openssl libssl-dev python3-pip python3-distutils python3 mediainfo || true
+    git clone --depth 1 https://gitlab.com/LazyLibrarian/LazyLibrarian.git /home/appbox/appbox_installer/lazylibrarian
+    cp /home/appbox/appbox_installer/lazylibrarian/init/lazylibrarian.initd /etc/init.d/lazylibrarian
+    chmod +x /etc/init.d/lazylibrarian
+    sed -i 's/--daemon//g' /etc/init.d/lazylibrarian
+    cat << EOF > /etc/default/lazylibrarian
+CONFIG=/home/appbox/appbox_installer/lazylibrarian/config.ini
+APP_PATH=/home/appbox/appbox_installer/lazylibrarian/
+DATADIR=/home/appbox/appbox_installer/lazylibrarian/
+RUN_AS=appbox
+EOF
+    cat << EOF >/home/appbox/appbox_installer/lazylibrarian/config.ini
+[General]
+  http_host = 0.0.0.0
+  launch_browser = 0
+  http_root = "/lazylibrarian"
+EOF
+chown -R appbox:appbox /home/appbox/appbox_installer/lazylibrarian
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
 
-# setup_ngpost() {
-#     mkdir /opt/ngpost && cd /opt/ngpost
-#     curl -L -O $( curl -s https://api.github.com/repos/mbruel/ngPost/releases | grep 'debian8.AppImage' | grep browser_download_url | head -1 | cut -d \" -f 4 )
-#     chmod +x /opt/ngpost/*.AppImage
-#     FILENAME=$(ls -la /opt/ngpost | grep 'AppImage' | awk '{print $9}')
-#         cat << EOF > /home/appbox/Desktop/ngPost.desktop
-# #!/usr/bin/env xdg-open
-# [Desktop Entry]
-# Version=1.0
-# Type=Application
-# Terminal=false
-# Exec=/opt/ngpost/${FILENAME}
-# Name=ngPost
-# Comment=ngPost
-# EOF
-#     chown appbox:appbox /home/appbox/Desktop/ngPost.desktop
-#     chmod +x /home/appbox/Desktop/ngPost.desktop
-#     echo -e "\n\n\n\n\n
-#     Installation sucessful! Please launch ngpost using the icon on your desktop."
-# }
+# Redirect stderr to stdout.
+fdmove -c 2 1
 
-# setup_pyload() {
-#     mkdir -p /opt/pyload && cd /opt/pyload
-#     rm -f /config/pyload.pid
-#     s6-svc -d /run/s6/services/pyload || true
-#     apt install -y git python python-crypto python-pycurl python-pil tesseract-ocr libtesseract-dev python-qt4 python-jinja2 libmozjs-52-0 libmozjs-52-dev
-#     ln -sf /usr/bin/js52 /usr/bin/js
-#     git clone --depth 1 -b stable https://github.com/pyload/pyload.git /opt/pyload
-#     echo "/home/appbox/.config/pyload" > /opt/pyload/module/config/configdir
-#     if  [ ! -f "/home/appbox/.config/pyload/files.db" ] || [ ! -f "/home/appbox/.config/pyload/files.version" ] || [ ! -f "/home/appbox/.config/pyload/plugin.conf" ] || [ ! -f "/home/appbox/.config/pyload/pyload.conf" ]
-#         then
-#         mkdir -p /home/appbox/.config/pyload
-#         chmod 777 /home/appbox/.config/pyload
-#         wget -O /home/appbox/.config/pyload/files.db https://raw.githubusercontent.com/Cobraeti/docker-pyload/master/config/files.db
-#         wget -O /home/appbox/.config/pyload/files.version https://raw.githubusercontent.com/Cobraeti/docker-pyload/master/config/files.version
-#         wget -O /home/appbox/.config/pyload/plugin.conf https://raw.githubusercontent.com/Cobraeti/docker-pyload/master/config/plugin.conf
-#         wget -O /home/appbox/.config/pyload/pyload.conf https://raw.githubusercontent.com/Cobraeti/docker-pyload/master/config/pyload.conf
+s6-setuidgid appbox
 
-#         sed -i 's#"Path Prefix" =#"Path Prefix" = /pyload#g' /home/appbox/.config/pyload/pyload.conf
-#         sed -i 's#/downloads#/home/appbox/Downloads/#g' /home/appbox/.config/pyload/pyload.conf
-#     fi
-#     chown -R appbox:appbox /home/appbox/.config/pyload
-#     chown -R appbox:appbox /opt/pyload
+cd /home/appbox/appbox_installer/lazylibrarian
+/usr/bin/python3 LazyLibrarian.py --nolaunch --config=/home/appbox/appbox_installer/lazylibrarian/config.ini --datadir=/home/appbox/appbox_installer/lazylibrarian/ --pidfile=/var/run/lazylibrarian/lazylibrarian.pid
+EOF
+)
+    create_service 'lazylibrarian'
+    configure_nginx 'lazylibrarian' '5299'
+}
 
-#     cat << EOF > /etc/supervisor/conf.d/pyload.conf
-# [program:pyload]
-# command=/bin/su -s /bin/bash -c "/usr/bin/python /opt/pyload/pyLoadCore.py" appbox
-# autostart=true
-# autorestart=true
-# priority=5
-# stdout_events_enabled=true
-# stderr_events_enabled=true
-# stdout_logfile=/tmp/pyload.log
-# stdout_logfile_maxbytes=0
-# stderr_logfile=/tmp/pyload.log
-# stderr_logfile_maxbytes=0
-# EOF
-#     configure_nginx 'pyload' '8000'
-#     echo -e "\n\n\n\n\n
-#     The default user for pyload is: admin
-#     The default password for pyload is: pyload"
-# }
+setup_pyload() {
+    mkdir -p /home/appbox/appbox_installer/pyload && cd /home/appbox/appbox_installer/pyload
+    s6-svc -d /run/s6/services/pyload || true
+    apt install -y git python python-crypto python-pycurl python-pil tesseract-ocr libtesseract-dev  python-jinja2 libmozjs-52-0 libmozjs-52-dev
+    ln -sf /usr/bin/js52 /usr/bin/js
+    git clone --depth 1 -b stable https://github.com/pyload/pyload.git /home/appbox/appbox_installer/pyload
+    echo "/home/appbox/.config/pyload" > /home/appbox/appbox_installer/pyload/module/config/configdir
+    if  [ ! -f "/home/appbox/.config/pyload/files.db" ] || [ ! -f "/home/appbox/.config/pyload/files.version" ] || [ ! -f "/home/appbox/.config/pyload/plugin.conf" ] || [ ! -f "/home/appbox/.config/pyload/pyload.conf" ]
+        then
+        mkdir -p /home/appbox/.config/pyload
+        chmod 777 /home/appbox/.config/pyload
+        wget -O /home/appbox/.config/pyload/files.db https://raw.githubusercontent.com/Cobraeti/docker-pyload/master/config/files.db
+        wget -O /home/appbox/.config/pyload/files.version https://raw.githubusercontent.com/Cobraeti/docker-pyload/master/config/files.version
+        wget -O /home/appbox/.config/pyload/plugin.conf https://raw.githubusercontent.com/Cobraeti/docker-pyload/master/config/plugin.conf
+        wget -O /home/appbox/.config/pyload/pyload.conf https://raw.githubusercontent.com/Cobraeti/docker-pyload/master/config/pyload.conf
+
+        sed -i 's#"Path Prefix" =#"Path Prefix" = /pyload#g' /home/appbox/.config/pyload/pyload.conf
+        sed -i 's#/downloads#/home/appbox/Downloads/#g' /home/appbox/.config/pyload/pyload.conf
+    fi
+    chown -R appbox:appbox /home/appbox/.config/pyload
+    chown -R appbox:appbox /home/appbox/appbox_installer/pyload
+
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+s6-setuidgid appbox
+
+cd /home/appbox/appbox_installer/pyload
+/usr/bin/python /home/appbox/appbox_installer/pyload/pyLoadCore.py
+EOF
+)
+    create_service 'pyload'
+    configure_nginx 'pyload' '8000'
+    echo -e "\n\n\n\n\n
+    The default user for pyload is: admin
+    The default password for pyload is: pyload"
+}
+
+setup_ngpost() {
+    mkdir /home/appbox/appbox_installer/ngpost && cd /home/appbox/appbox_installer/ngpost
+    curl -L -O $( curl -s https://api.github.com/repos/mbruel/ngPost/releases | grep 'debian8.AppImage' | grep browser_download_url | head -1 | cut -d \" -f 4 )
+    chmod +x /home/appbox/appbox_installer/ngpost/*.AppImage
+    FILENAME=$(ls -la /home/appbox/appbox_installer/ngpost | grep 'AppImage' | awk '{print $9}')
+    wget -O /usr/share/pixmaps/ngPost.png https://raw.githubusercontent.com/mbruel/ngPost/master/src/resources/icons/ngPost.png
+        cat << EOF > /usr/share/applications/ngpost.desktop
+[Desktop Entry]
+Version=1.0
+Name=ngPost
+GenericName=ngPost
+X-GNOME-FullName=ngPost
+TryExec=/home/appbox/appbox_installer/ngpost/${FILENAME}
+Exec=/home/appbox/appbox_installer/ngpost/${FILENAME}
+Terminal=false
+Icon=ngPost
+Type=Application
+Categories=Network;FileTransfer;GTK;
+StartupWMClass=ngPost
+StartupNotify=true
+X-GNOME-UsesNotifications=true
+EOF
+    chown -R appbox:appbox /home/appbox/appbox_installer/ngpost
+    pkill -HUP -f 'wingpanel'
+    echo -e "\n\n\n\n\n
+    Installation sucessful! Please launch ngpost using the \"Applications\" menu on the top left of your screen."
+}
+
+setup_komga() {
+    s6-svc -d /run/s6/services/komga || true
+    mkdir -p /var/cache/oracle-jdk11-installer-local
+    wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/jdk-11.0.10_linux-x64_bin.tar.gz https://github.com/coder8338/appbox_installer/releases/download/bin/asd8923ehsa.tar.gz
+    add-apt-repository -y ppa:linuxuprising/java
+    apt update
+    echo debconf shared/accepted-oracle-license-v1-2 select true | debconf-set-selections
+    echo debconf shared/accepted-oracle-license-v1-2 seen true | debconf-set-selections
+    apt-get install -y oracle-java11-installer-local || true
+    sed -i 's/tar xzf $FILENAME/tar xzf $FILENAME --no-same-owner/g' /var/lib/dpkg/info/oracle-java11-installer-local.postinst
+    dpkg --configure -a
+    mkdir /home/appbox/appbox_installer/komga
+    cd /home/appbox/appbox_installer/komga
+    curl -L -O $( curl -s https://api.github.com/repos/gotson/komga/releases | grep jar | grep browser_download_url | head -1 | cut -d \" -f 4 )
+    chown -R appbox:appbox /home/appbox/appbox_installer/komga
+
+    FILENAME=$(ls -la /home/appbox/appbox_installer/komga | grep jar | awk '{print $9}')
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+s6-setuidgid appbox
+
+/usr/bin/java -jar /home/appbox/appbox_installer/komga/${FILENAME} --server.servlet.context-path="/komga" --server.port=8443
+EOF
+)
+    create_service 'komga'
+    configure_nginx 'komga' '8443'
+}
 
 # setup_deemixrr() {
 #     s6-svc -d /run/s6/services/deemixrr || true
@@ -809,38 +848,6 @@ EOF
 #     configure_nginx 'deemixrr' '5555'
 # }
 
-# setup_komga() {
-#     s6-svc -d /run/s6/services/komga || true
-#     mkdir -p /var/cache/oracle-jdk11-installer-local
-#     wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/jdk-11.0.9_linux-x64_bin.tar.gz --header "Cookie: oraclelicense=accept-securebackup-cookie" https://download.oracle.com/otn-pub/java/jdk/11.0.9%2B7/eec35ebefb3f4133bd045b891f05db94/jdk-11.0.9_linux-x64_bin.tar.gz
-#     add-apt-repository -y ppa:linuxuprising/java
-#     apt update
-#     echo debconf shared/accepted-oracle-license-v1-2 select true | debconf-set-selections
-#     echo debconf shared/accepted-oracle-license-v1-2 seen true | debconf-set-selections
-#     apt-get install -y oracle-java11-installer-local || true
-#     sed -i 's/tar xzf $FILENAME/tar xzf $FILENAME --no-same-owner/g' /var/lib/dpkg/info/oracle-java11-installer-local.postinst
-#     dpkg --configure -a
-#     mkdir /opt/komga
-#     cd /opt/komga
-#     curl -L -O $( curl -s https://api.github.com/repos/gotson/komga/releases | grep jar | grep browser_download_url | head -1 | cut -d \" -f 4 )
-#     chown -R appbox:appbox /opt/komga
-#     cat << EOF > /etc/supervisor/conf.d/komga.conf
-# [program:komga]
-# command=/bin/su -s /bin/bash -c "export FILENAME=\$(ls -la /opt/komga | grep jar | awk '{print \$9}'); /usr/bin/java -jar /opt/komga/\${FILENAME} --server.servlet.context-path="/komga" --server.port=8443" appbox
-# autostart=true
-# autorestart=true
-# priority=5
-# stdout_events_enabled=true
-# stderr_events_enabled=true
-# stdout_logfile=/tmp/komga.log
-# stdout_logfile_maxbytes=0
-# stderr_logfile=/tmp/komga.log
-# stderr_logfile_maxbytes=0
-# EOF
-
-#     configure_nginx 'komga' '8443'
-# }
-
 install_prompt() {
     echo "Welcome to the install script, please select one of the following options to install:
     
@@ -860,6 +867,10 @@ install_prompt() {
     14) filebot
     15) synclounge
     16) medusa
+    17) lazylibrarian
+    18) pyload
+    19) ngpost
+    20) komga
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
@@ -930,22 +941,22 @@ install_prompt() {
             echo "Setting up medusa.."
             setup_medusa
             ;;
-        # 15|lazylibrarian)
-        #     echo "Setting up lazylibrarian.."
-        #     setup_lazylibrarian
-        #     ;;
-        # 17|ngpost)
-        #     echo "Setting up ngpost.."
-        #     setup_ngpost
-        #     ;;
-        # 18|pyload)
-        #     echo "Setting up pyload.."
-        #     setup_pyload
-        #     ;;
-        # 20|komga)
-        #     echo "Setting up komga.."
-        #     setup_komga
-        #     ;;
+        17|lazylibrarian)
+            echo "Setting up lazylibrarian.."
+            setup_lazylibrarian
+            ;;
+        18|pyload)
+            echo "Setting up pyload.."
+            setup_pyload
+            ;;
+        19|ngpost)
+            echo "Setting up ngpost.."
+            setup_ngpost
+            ;;
+        20|komga)
+            echo "Setting up komga.."
+            setup_komga
+            ;;
         *) 
             echo "Sorry, that option doesn't exist, please try again!"
             return 1
