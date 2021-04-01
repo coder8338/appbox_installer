@@ -491,69 +491,69 @@ EOF
     configure_nginx 'bazarr' '6767'
 }
 
-# setup_flexget() {
-#     s6-svc -d /run/s6/services/flexget || true
-#     apt install -y \
-#     python-pip \
-#     libcap2-bin \
-#     curl || true
-#     pip install --upgrade pip && \
-#     hash -r pip && \
-#     pip install --upgrade setuptools && \
-#     pip install flexget[webui]
-#     mkdir -p /home/appbox/.config/flexget
-#     chown -R appbox:appbox /home/appbox/.config/flexget
-# cat << EOF > /home/appbox/.config/flexget/config.yml
-# templates:
-#   Example-Template:
-#     accept_all: yes
-#     download: /APPBOX_DATA/storage
-# tasks:
-#   Task-1:
-#     rss: 'http://example'
-#     template: 'Example Template'
-# schedules:
-#   - tasks: 'Task-1'
-#     interval:
-#       minutes: 1
-# web_server:
-#   bind: 0.0.0.0
-#   port: 9797
-#   web_ui: yes
-#   base_url: /flexget
-#   run_v2: yes
-# EOF
-#     cat << EOF > /tmp/flexpasswd
-# #!/usr/bin/env bash
-# GOOD_PASSWORD=0
-# until [ "\${GOOD_PASSWORD}" == "1" ]; do
-#     echo 'Please enter a password for flexget'
-#     read FLEXGET_PASSWORD
-#     if ! flexget web passwd "\${FLEXGET_PASSWORD}" | grep -q 'is not strong enough'; then
-#         GOOD_PASSWORD=1
-#     else
-#         echo -e 'Your password is not strong enough, please enter a few more words.';
-#     fi
-# done
-# EOF
-#     chmod +x /tmp/flexpasswd
-#     /bin/su -s /bin/bash -c "/tmp/flexpasswd" appbox
-#     rm -f /tmp/flexpasswd
-#     cat << EOF > /etc/supervisor/conf.d/flexget.conf
-# [program:flexget]
-# command=/bin/su -s /bin/bash -c "flexget daemon start" appbox
-# autostart=true
-# autorestart=true
-# priority=5
-# stdout_events_enabled=true
-# stderr_events_enabled=true
-# stdout_logfile=/tmp/flexget.log
-# stdout_logfile_maxbytes=0
-# stderr_logfile=/tmp/flexget.log
-# stderr_logfile_maxbytes=0
-# EOF
-#     configure_nginx 'flexget' '9797'
-# }
+setup_flexget() {
+    s6-svc -d /run/s6/services/flexget || true
+    apt install -y \
+    python3-pip \
+    libcap2-bin \
+    curl || true
+    pip3 install --upgrade pip && \
+    hash -r pip3 && \
+    pip3 install --upgrade setuptools && \
+    pip3 install flexget[webui]
+    mkdir -p /home/appbox/.config/flexget
+    chown -R appbox:appbox /home/appbox/.config/flexget
+cat << EOF > /home/appbox/.config/flexget/config.yml
+templates:
+  Example-Template:
+    accept_all: yes
+    download: /APPBOX_DATA/storage
+tasks:
+  Task-1:
+    rss: 'http://example'
+    template: 'Example Template'
+schedules:
+  - tasks: 'Task-1'
+    interval:
+      minutes: 1
+web_server:
+  bind: 0.0.0.0
+  port: 9797
+  web_ui: yes
+  base_url: /flexget
+  run_v2: yes
+EOF
+    cat << EOF > /tmp/flexpasswd
+#!/usr/bin/env bash
+GOOD_PASSWORD=0
+until [ "\${GOOD_PASSWORD}" == "1" ]; do
+    echo 'Please enter a password for flexget'
+    read FLEXGET_PASSWORD
+    if ! flexget web passwd "\${FLEXGET_PASSWORD}" | grep -q 'is not strong enough'; then
+        GOOD_PASSWORD=1
+    else
+        echo -e 'Your password is not strong enough, please enter a few more words.';
+    fi
+done
+EOF
+    chmod +x /tmp/flexpasswd
+    /bin/su -s /bin/bash -c "/tmp/flexpasswd" appbox
+    rm -f /tmp/flexpasswd
+
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+s6-setuidgid appbox
+
+/usr/local/bin/flexget daemon start
+EOF
+)
+    create_service 'flexget'
+    configure_nginx 'flexget' '9797'
+}
 
 # setup_filebot() {
 #     # https://www.oracle.com/webapps/redirect/signon?nexturl=https://download.oracle.com/otn/java/jdk/11.0.4+10/cf1bbcbf431a474eb9fc550051f4ee78/jdk-11.0.4_linux-x64_bin.tar.gz
@@ -861,6 +861,7 @@ install_prompt() {
     10) organizr
     11) nzbhydra2
     12) bazarr
+    13) flexget
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
@@ -915,10 +916,10 @@ install_prompt() {
             echo "Setting up bazarr.."
             setup_bazarr
             ;;
-        # 3|flexget)
-        #     echo "Setting up flexget.."
-        #     setup_flexget
-        #     ;;
+        13|flexget)
+            echo "Setting up flexget.."
+            setup_flexget
+            ;;
         # 4|filebot)
         #     echo "Setting up filebot.."
         #     setup_filebot
