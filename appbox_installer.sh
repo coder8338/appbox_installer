@@ -460,36 +460,36 @@ EOF
     configure_nginx 'nzbhydra2' '5076'
 }
 
-# setup_bazarr() {
-#     s6-svc -d /run/s6/services/bazarr || true
-#     apt update
-#     apt -y install git-core python3-pip python3-distutils python3.7 || true
-#     cd /opt
-#     git clone --depth 1 https://github.com/morpheus65535/bazarr.git
-#     cd /opt/bazarr
-#     pip install -r requirements.txt
-#     chown -R appbox:appbox /opt
-#     /bin/su -s /bin/bash -c "python3.7 /opt/bazarr/bazarr.py" appbox &
-#     until grep -q 'base_url' /opt/bazarr/data/config/config.ini; do
-#         sleep 1
-#     done
-#     kill -9 $(ps aux | grep 'python3.7 -u /opt/bazarr/bazarr/main.py' | grep -v 'grep' | grep -v 'bash' | awk '{print $2}')
-#     sed -i '0,/base_url = /s//base_url = \/bazarr\//' /opt/bazarr/data/config/config.ini
-# cat << EOF > /etc/supervisor/conf.d/bazarr.conf
-# [program:bazarr]
-# command=/bin/su -s /bin/bash -c "python3.7 /opt/bazarr/bazarr.py" appbox
-# autostart=true
-# autorestart=true
-# priority=5
-# stdout_events_enabled=true
-# stderr_events_enabled=true
-# stdout_logfile=/tmp/bazarr.log
-# stdout_logfile_maxbytes=0
-# stderr_logfile=/tmp/bazarr.log
-# stderr_logfile_maxbytes=0
-# EOF
-#     configure_nginx 'bazarr' '6767'
-# }
+setup_bazarr() {
+    s6-svc -d /run/s6/services/bazarr || true
+    apt update
+    apt -y install git-core python3-pip python3-distutils || true
+    cd /home/appbox/appbox_installer
+    git clone --depth 1 https://github.com/morpheus65535/bazarr.git
+    cd /home/appbox/appbox_installer/bazarr
+    pip3 install -r requirements.txt
+    chown -R appbox:appbox /home/appbox/appbox_installer/bazarr
+    /bin/su -s /bin/bash -c "python3 /home/appbox/appbox_installer/bazarr/bazarr.py" appbox &
+    until grep -q 'base_url' /home/appbox/appbox_installer/bazarr/data/config/config.ini; do
+        sleep 1
+    done
+    pkill -f 'bazarr'
+    sed -i '0,/base_url = /s//base_url = \/bazarr\//' /home/appbox/appbox_installer/bazarr/data/config/config.ini
+
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+s6-setuidgid appbox
+
+python3 /home/appbox/appbox_installer/bazarr/bazarr.py
+EOF
+)
+    create_service 'bazarr'
+    configure_nginx 'bazarr' '6767'
+}
 
 # setup_flexget() {
 #     s6-svc -d /run/s6/services/flexget || true
@@ -860,6 +860,7 @@ install_prompt() {
     9) lidarr
     10) organizr
     11) nzbhydra2
+    12) bazarr
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
@@ -910,6 +911,10 @@ install_prompt() {
             echo "Setting up nzbhydra2.."
             setup_nzbhydra2
             ;;
+        12|bazarr)
+            echo "Setting up bazarr.."
+            setup_bazarr
+            ;;
         # 3|flexget)
         #     echo "Setting up flexget.."
         #     setup_flexget
@@ -921,10 +926,6 @@ install_prompt() {
         # 11|synclounge)
         #     echo "Setting up synclounge.."
         #     setup_synclounge
-        #     ;;
-        # 13|bazarr)
-        #     echo "Setting up bazarr.."
-        #     setup_bazarr
         #     ;;
         # 14|medusa)
         #     echo "Setting up medusa.."
