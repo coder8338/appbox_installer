@@ -419,6 +419,47 @@ EOF
     configure_nginx 'organizr/' '8009'
 }
 
+setup_nzbhydra2() {
+    s6-svc -d /run/s6/services/nzbhydra2 || true
+    mkdir -p /var/cache/oracle-jdk11-installer-local
+    wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/jdk-11.0.10_linux-x64_bin.tar.gz https://github.com/coder8338/appbox_installer/releases/download/bin/asd8923ehsa.tar.gz
+    add-apt-repository -y ppa:linuxuprising/java
+    apt update
+    echo debconf shared/accepted-oracle-license-v1-2 select true | debconf-set-selections
+    echo debconf shared/accepted-oracle-license-v1-2 seen true | debconf-set-selections
+    apt-get install -y oracle-java11-installer-local libchromaprint-tools || true
+    sed -i 's/tar xzf $FILENAME/tar xzf $FILENAME --no-same-owner/g' /var/lib/dpkg/info/oracle-java11-installer-local.postinst
+    dpkg --configure -a
+    mkdir -p /home/appbox/appbox_installer/nzbhydra2
+    cd /home/appbox/appbox_installer/nzbhydra2
+    curl -L -O $( curl -s https://api.github.com/repos/theotherp/nzbhydra2/releases | grep linux.zip | grep browser_download_url | head -1 | cut -d \" -f 4 )
+    unzip -o nzbhydra2*.zip
+    rm -f nzbhydra2*.zip
+    chmod +x /home/appbox/appbox_installer/nzbhydra2/nzbhydra2
+    chown -R appbox:appbox /home/appbox/appbox_installer/nzbhydra2
+    # Generate config
+    /bin/su -s /bin/bash -c "/home/appbox/appbox_installer/nzbhydra2/nzbhydra2" appbox &
+    until grep -q 'urlBase' /home/appbox/appbox_installer/nzbhydra2/data/nzbhydra.yml; do
+        sleep 1
+    done
+    pkill -f 'nzbhydra2'
+    sed -i 's@urlBase: "/"@urlBase: "/nzbhydra2"@g' /home/appbox/appbox_installer/nzbhydra2/data/nzbhydra.yml
+
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+s6-setuidgid appbox
+
+/home/appbox/appbox_installer/nzbhydra2/nzbhydra2
+EOF
+)
+    create_service 'nzbhydra2'
+    configure_nginx 'nzbhydra2' '5076'
+}
+
 # setup_bazarr() {
 #     s6-svc -d /run/s6/services/bazarr || true
 #     apt update
@@ -661,47 +702,6 @@ EOF
 #     configure_nginx 'synclounge' '8088'
 # }
 
-# setup_nzbhydra2() {
-#     s6-svc -d /run/s6/services/nzbhydra2 || true
-#     mkdir -p /var/cache/oracle-jdk11-installer-local
-#     wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/jdk-11.0.9_linux-x64_bin.tar.gz --header "Cookie: oraclelicense=accept-securebackup-cookie" https://download.oracle.com/otn-pub/java/jdk/11.0.9%2B7/eec35ebefb3f4133bd045b891f05db94/jdk-11.0.9_linux-x64_bin.tar.gz
-#     add-apt-repository -y ppa:linuxuprising/java
-#     apt update
-#     echo debconf shared/accepted-oracle-license-v1-2 select true | debconf-set-selections
-#     echo debconf shared/accepted-oracle-license-v1-2 seen true | debconf-set-selections
-#     apt-get install -y oracle-java11-installer-local libchromaprint-tools || true
-#     sed -i 's/tar xzf $FILENAME/tar xzf $FILENAME --no-same-owner/g' /var/lib/dpkg/info/oracle-java11-installer-local.postinst
-#     dpkg --configure -a
-#     mkdir -p /opt/nzbhydra2
-#     cd /opt/nzbhydra2
-#     curl -L -O $( curl -s https://api.github.com/repos/theotherp/nzbhydra2/releases | grep linux.zip | grep browser_download_url | head -1 | cut -d \" -f 4 )
-#     unzip -o nzbhydra2*.zip
-#     rm -f nzbhydra2*.zip
-#     chmod +x /opt/nzbhydra2/nzbhydra2
-#     chown -R appbox:appbox /opt
-#     # Generate config
-#     /bin/su -s /bin/bash -c "/opt/nzbhydra2/nzbhydra2" appbox &
-#     until grep -q 'urlBase' /opt/nzbhydra2/data/nzbhydra.yml; do
-#         sleep 1
-#     done
-#     kill -9 $(ps aux | grep 'nzbhydra2' | grep -v 'grep' | grep -v 'bash' | awk '{print $2}')
-#     sed -i 's@urlBase: "/"@urlBase: "/nzbhydra2"@g' /opt/nzbhydra2/data/nzbhydra.yml
-#     cat << EOF > /etc/supervisor/conf.d/nzbhydra2.conf
-# [program:nzbhydra2]
-# command=/bin/su -s /bin/bash -c "/opt/nzbhydra2/nzbhydra2" appbox
-# autostart=true
-# autorestart=true
-# priority=5
-# stdout_events_enabled=true
-# stderr_events_enabled=true
-# stdout_logfile=/tmp/nzbhydra2.log
-# stdout_logfile_maxbytes=0
-# stderr_logfile=/tmp/nzbhydra2.log
-# stderr_logfile_maxbytes=0
-# EOF
-#     configure_nginx 'nzbhydra2' '5076'
-# }
-
 # setup_ngpost() {
 #     mkdir /opt/ngpost && cd /opt/ngpost
 #     curl -L -O $( curl -s https://api.github.com/repos/mbruel/ngPost/releases | grep 'debian8.AppImage' | grep browser_download_url | head -1 | cut -d \" -f 4 )
@@ -859,6 +859,7 @@ install_prompt() {
     8) ombi
     9) lidarr
     10) organizr
+    11) nzbhydra2
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
@@ -905,6 +906,10 @@ install_prompt() {
             echo "Setting up organizr.."
             setup_organizr
             ;;
+        11|nzbhydra2)
+            echo "Setting up nzbhydra2.."
+            setup_nzbhydra2
+            ;;
         # 3|flexget)
         #     echo "Setting up flexget.."
         #     setup_flexget
@@ -928,10 +933,6 @@ install_prompt() {
         # 15|lazylibrarian)
         #     echo "Setting up lazylibrarian.."
         #     setup_lazylibrarian
-        #     ;;
-        # 16|nzbhydra2)
-        #     echo "Setting up nzbhydra2.."
-        #     setup_nzbhydra2
         #     ;;
         # 17|ngpost)
         #     echo "Setting up ngpost.."
