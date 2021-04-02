@@ -131,7 +131,7 @@ fdmove -c 2 1
 s6-setuidgid appbox
 
 foreground { rm /home/appbox/.config/Sonarr/sonarr.pid }
-/usr/bin/mono --debug /usr/lib/sonarr/bin/Sonarr.exe -nobrowser"
+/usr/bin/mono --debug /usr/lib/sonarr/bin/Sonarr.exe -nobrowser
 EOF
 )
     create_service 'sonarr'
@@ -272,6 +272,7 @@ setup_sabnzbdplus() {
     add-apt-repository -y ppa:jcfp/ppa
     apt-get install -y sabnzbdplus
     sed -i 's/--daemon//g' /etc/init.d/sabnzbdplus
+    mkdir /home/appbox/.sabnzbd
     cat << EOF > /etc/default/sabnzbdplus
 USER=appbox
 HOST=0.0.0.0
@@ -286,6 +287,7 @@ fdmove -c 2 1
 
 s6-setuidgid appbox
 
+cd /home/appbox/.sabnzbd
 /usr/bin/python3 -OO /usr/bin/sabnzbdplus --pidfile /var/run/sabnzbdplus/pid --server 0.0.0.0:9090 -b0
 EOF
 )
