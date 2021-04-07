@@ -237,7 +237,7 @@ fdmove -c 2 1
 
 s6-setuidgid appbox
 
-cd /home/appbox/appbox_installer/couchpotato/CouchPotatoData
+cd /home/appbox/appbox_installer/couchpotato/CouchPotatoServer
 /usr/bin/python CouchPotato.py --pid_file=/var/run/couchpotato/couchpotato.pid --data_dir=/home/appbox/appbox_installer/couchpotato/CouchPotatoData
 EOF
 )
