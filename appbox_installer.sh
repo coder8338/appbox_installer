@@ -165,6 +165,7 @@ fdmove -c 2 1
 
 s6-setuidgid appbox
 
+cd /home/appbox/appbox_installer/sickchill/
 /usr/bin/python3 SickChill.py -q --nolaunch --pidfile=/var/run/sickchill/sickchill.pid --datadir=/home/appbox/appbox_installer/sickchill/
 EOF
 )
@@ -236,6 +237,7 @@ fdmove -c 2 1
 
 s6-setuidgid appbox
 
+cd /home/appbox/appbox_installer/couchpotato/CouchPotatoData
 /usr/bin/python CouchPotato.py --pid_file=/var/run/couchpotato/couchpotato.pid --data_dir=/home/appbox/appbox_installer/couchpotato/CouchPotatoData
 EOF
 )
