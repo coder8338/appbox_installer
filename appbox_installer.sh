@@ -303,10 +303,11 @@ setup_ombi() {
     update-locale "LANG=en_US.UTF-8"
     locale-gen --purge "en_US.UTF-8"
     dpkg-reconfigure --frontend noninteractive locales
-    echo "deb [arch=amd64,armhf] http://repo.ombi.turd.me/stable/ jessie main" | sudo tee "/etc/apt/sources.list.d/ombi.list"
     wget -qO - https://repo.ombi.turd.me/pubkey.txt | sudo apt-key add -
+    echo "deb [arch=amd64,armhf] http://repo.ombi.turd.me/stable/ jessie main" | sudo tee "/etc/apt/sources.list.d/ombi.list"
     mkdir -p opt
     apt update
+    apt -y remove ombi || true
     apt -y install ombi
     mv /opt/Ombi /home/appbox/appbox_installer/ombiServer
     mkdir -p /home/appbox/appbox_installer/ombiData
@@ -804,6 +805,151 @@ EOF
     configure_nginx 'komga' '8443'
 }
 
+setup_ombiv4() {
+    s6-svc -d /run/s6/services/ombiv4 || true
+    update-locale "LANG=en_US.UTF-8"
+    locale-gen --purge "en_US.UTF-8"
+    dpkg-reconfigure --frontend noninteractive locales
+    curl -sSL https://apt.ombi.app/pub.key | sudo apt-key add -
+    echo "deb https://apt.ombi.app/develop jessie main" | sudo tee /etc/apt/sources.list.d/ombiv4.list
+    mkdir -p opt
+    apt update
+    apt -y remove ombi || true
+    apt -y install ombi
+    mv /opt/Ombi /home/appbox/appbox_installer/ombiv4Server
+    mkdir -p /home/appbox/appbox_installer/ombiv4Data
+    chown -R appbox:appbox /home/appbox/appbox_installer/ombiv4Data
+    chown -R appbox:appbox /home/appbox/appbox_installer/ombiv4Server
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+s6-setuidgid appbox
+
+cd /home/appbox/appbox_installer/ombiv4Server
+/home/appbox/appbox_installer/ombiv4Server/Ombi --baseurl /ombiv4 --host http://*:6050 --storage /home/appbox/appbox_installer/ombiv4Data/
+EOF
+)
+    create_service 'ombiv4'
+    configure_nginx 'ombiv4' '6050'
+}
+
+setup_readarr() {
+    s6-svc -d /run/s6/services/readarr || true
+    mkdir /home/appbox/appbox_installer/Readarr
+    chown appbox:appbox /home/appbox/appbox_installer/Readarr
+    apt install -y curl sqlite
+    wget -O /tmp/readarr.tar.gz https://github.com/coder8338/appbox_installer/releases/download/readarr-10.0.0.27010/readarr.tar.gz
+    tar zxvf /tmp/readarr.tar.gz -C /home/appbox/appbox_installer/Readarr/
+    cp -R /home/appbox/appbox_installer/Readarr/publish/* /home/appbox/appbox_installer/Readarr/
+    chown -R appbox:appbox /home/appbox/appbox_installer/Readarr
+    # Generate config
+    cd /home/appbox/appbox_installer/Readarr
+    /bin/su -s /bin/bash -c "/home/appbox/appbox_installer/Readarr/Readarr -nobrowser -data /home/appbox/appbox_installer/Readarr" appbox &
+    until grep -q 'UrlBase' /home/appbox/.config/Readarr/config.xml; do
+        sleep 1
+    done
+    pkill -f 'Readarr'
+    sed -i 's@<UrlBase></UrlBase>@<UrlBase>/readarr</UrlBase>@g' /home/appbox/.config/Readarr/config.xml
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+s6-setuidgid appbox
+
+foreground { rm /home/appbox/.config/Readarr/readarr.pid }
+/home/appbox/appbox_installer/Readarr/Readarr -nobrowser -data /home/appbox/appbox_installer/Readarr
+EOF
+)
+    create_service 'readarr'
+    configure_nginx 'readarr' '8787'
+
+    # Build commands:
+    # curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
+    # echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+    # wget https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb -O /tmp/packages-microsoft-prod.deb
+    # wget -qO- https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+    # dpkg -i /tmp/packages-microsoft-prod.deb
+    # rm -f /tmp/packages-microsoft-prod.deb
+    # apt update
+    # apt install -y dotnet-sdk-5.0 
+    # /bin/su -s /bin/bash -c "mkdir /tmp/build/" appbox
+    # cd /tmp/build/
+    # /bin/su -s /bin/bash -c "git clone https://github.com/Readarr/Readarr ." appbox
+    # #find . -name '*.csproj' -exec dotnet restore {} \;
+    # /bin/su -s /bin/bash -c "bash build.sh" appbox
+    # cd /tmp/build/_output/net5.0/linux-x64/
+    # /bin/su -s /bin/bash -c "rsync -av --progress * /home/appbox/appbox_installer/Readarr" appbox
+    # cd /tmp/build/_output/
+    # /bin/su -s /bin/bash -c "rsync -av --progress UI /home/appbox/appbox_installer/Readarr/" appbox
+    # /bin/su -s /bin/bash -c "cp /tmp/build/_output/Readarr.Update/net5.0/linux-x64/fpcalc /home/appbox/appbox_installer/Readarr/" appbox
+    # # rm -rf /tmp/build
+}
+
+setup_overseer() {
+    s6-svc -d /run/s6/services/overseer || true
+    mkdir /home/appbox/appbox_installer/overseer
+    chown appbox:appbox /home/appbox/appbox_installer/overseer
+    curl -sL https://deb.nodesource.com/setup_12.x | bash -
+    curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
+    echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+    apt update
+    apt install -y yarn sqlite jq nodejs
+    dlurl="$(curl -sS https://api.github.com/repos/sct/overseerr/releases/latest | jq .tarball_url -r)"
+    wget "$dlurl" -q -O /tmp/overseerr.tar.gz
+    tar --strip-components=1 -C /home/appbox/appbox_installer/overseer -xzvf /tmp/overseerr.tar.gz
+    yarn install --cwd /home/appbox/appbox_installer/overseer
+    yarn --cwd /home/appbox/appbox_installer/overseer build
+    chown -R appbox:appbox /home/appbox/appbox_installer/overseer
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+s6-setuidgid appbox
+cd /home/appbox/appbox_installer/overseer
+/usr/bin/node dist/index.js
+EOF
+)
+    create_service 'overseer'
+    if ! grep -q "overseerr {" /etc/nginx/sites-enabled/default; then
+        sed -i '/server_name _/a \
+        location /overseerr {\
+                set $app "overseerr";\
+                # Remove /overseerr path to pass to the app\
+                rewrite ^/overseerr/?(.*)$ /$1 break;\
+                proxy_pass http://127.0.0.1:5055; # NO TRAILING SLASH\
+\
+                # Redirect location headers\
+                proxy_redirect ^ /$app;\
+                proxy_redirect /setup /$app/setup;\
+                proxy_redirect /login /$app/login;\
+\
+                # Sub filters to replace hardcoded paths\
+                proxy_set_header Accept-Encoding "";\
+                sub_filter_once off;\
+                sub_filter_types *;\
+                sub_filter '\''href="/"'\'' '\''href="/$app"'\'';\
+                sub_filter '\''href="/login"'\'' '\''href="/$app/login"'\'';\
+                sub_filter '\''href:"/"'\'' '\''href:"/$app"'\'';\
+                sub_filter '\''/_next'\'' '\''/$app/_next'\'';\
+                sub_filter '\''/api/v1'\'' '\''/$app/api/v1'\'';\
+                sub_filter '\''/login/plex/loading'\'' '\''/$app/login/plex/loading'\'';\
+                sub_filter '\''/images/'\'' '\''/$app/images/'\'';\
+                sub_filter '\''/android-'\'' '\''/$app/android-'\'';\
+                sub_filter '\''/apple-'\'' '\''/$app/apple-'\'';\
+                sub_filter '\''/favicon'\'' '\''/$app/favicon'\'';\
+                sub_filter '\''/logo.png'\'' '\''/$app/logo.png'\'';\
+                sub_filter '\''/site.webmanifest'\'' '\''/$app/site.webmanifest'\'';\
+        }' /etc/nginx/sites-enabled/default
+    fi
+}
+
 # setup_deemixrr() {
 #     s6-svc -d /run/s6/services/deemixrr || true
 #     wget https://packages.microsoft.com/config/ubuntu/18.04/packages-microsoft-prod.deb -O /tmp/packages-microsoft-prod.deb
@@ -876,6 +1022,9 @@ install_prompt() {
     18) pyload
     19) ngpost
     20) komga
+    21) ombiv4
+    22) readarr
+    23) overseer
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
@@ -961,6 +1110,18 @@ install_prompt() {
         20|komga)
             echo "Setting up komga.."
             setup_komga
+            ;;
+        21|ombiv4)
+            echo "Setting up ombi v4.."
+            setup_ombiv4
+            ;;
+        22|readarr)
+            echo "Setting up readarr.."
+            setup_readarr
+            ;;
+        23|overseer)
+            echo "Setting up overseer.."
+            setup_overseer
             ;;
         *) 
             echo "Sorry, that option doesn't exist, please try again!"
