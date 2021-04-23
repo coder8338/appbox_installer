@@ -2,7 +2,7 @@
 This is the new version for Ubuntu 20.04. If you want the installer for Ubuntu 18.04 [click here](https://github.com/coder8338/appbox_installer/tree/Ubuntu-18.04)
 
 # Appbox Installer for Ubuntu 20.04
-Appbox installer for radarr, sonarr, sickchill, jackett, couchpotato, nzbget, sabnzbdplus, ombi, lidarr, organizr, nzbhydra2, bazarr, flexget, filebot, synclounge, medusa, lazylibrarian, pyload, ngpost & komga.
+Appbox installer for radarr, sonarr, sickchill, jackett, couchpotato, nzbget, sabnzbdplus, ombi, lidarr, organizr, nzbhydra2, bazarr, flexget, filebot, synclounge, medusa, lazylibrarian, pyload, ngpost, komga, ombi v4, readarr & overseer.
 
 ## How to run
 1. Install the [Ubuntu 20.04 app](https://www.appbox.co/appstore/app/210)
