@@ -39,7 +39,6 @@ configure_nginx() {
     NAME=${1}
     PORT=${2}
     OPTION=${3:-default}
-    APPBOX_USER=$(echo "${HOSTNAME}" | awk -F'.' '{print $2}')
     if ! grep -q "/${NAME} {" /etc/nginx/sites-enabled/default; then
         sed -i '/server_name _/a \
         location /'${NAME}' {\
@@ -53,19 +52,25 @@ configure_nginx() {
         fi
     fi
     pkill -HUP nginx
+    url_output "${NAME}"
+}
+
+url_output() {
+    NAME=${1}
+    APPBOX_USER=$(echo "${HOSTNAME}" | awk -F'.' '{print $2}')
     echo -e "\n\n\n\n\n
-    Installation sucessful! Please point your browser to:
-    \e[4mhttps://${HOSTNAME}/${NAME}\e[39m\e[0m
-    
-    You can continue the configuration from there.
-    \e[96mMake sure you protect the app by setting up a username/password in the app's settings!\e[39m
-    
-    \e[91mIf you want to use another appbox app in the settings of ${NAME}, make sure you access it on port 80, and without https, for example:
-    \e[4mhttp://rutorrent.${APPBOX_USER}.appboxes.co\e[39m\e[0m
-    \e[95mIf you want to access Plex from one of these installed apps use port 32400 for example:
-    \e[4mhttp://plex.${APPBOX_USER}.appboxes.co:32400\e[39m\e[0m
-    
-    That's because inside this container, we don't go through the appbox proxy! \n\n\n\n\n\n"
+        Installation sucessful! Please point your browser to:
+        \e[4mhttps://${HOSTNAME}/${NAME}\e[39m\e[0m
+        
+        You can continue the configuration from there.
+        \e[96mMake sure you protect the app by setting up a username/password in the app's settings!\e[39m
+        
+        \e[91mIf you want to use another appbox app in the settings of ${NAME}, make sure you access it on port 80, and without https, for example:
+        \e[4mhttp://rutorrent.${APPBOX_USER}.appboxes.co\e[39m\e[0m
+        \e[95mIf you want to access Plex from one of these installed apps use port 32400 for example:
+        \e[4mhttp://plex.${APPBOX_USER}.appboxes.co:32400\e[39m\e[0m
+        
+        That's because inside this container, we don't go through the appbox proxy! \n\n\n\n\n\n"
 }
 
 setup_radarr() {
@@ -890,10 +895,10 @@ EOF
     # # rm -rf /tmp/build
 }
 
-setup_overseer() {
-    s6-svc -d /run/s6/services/overseer || true
-    mkdir /home/appbox/appbox_installer/overseer
-    chown appbox:appbox /home/appbox/appbox_installer/overseer
+setup_overseerr() {
+    s6-svc -d /run/s6/services/overseerr || true
+    mkdir /home/appbox/appbox_installer/overseerr
+    chown appbox:appbox /home/appbox/appbox_installer/overseerr
     curl -sL https://deb.nodesource.com/setup_12.x | bash -
     curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
     echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
@@ -901,10 +906,10 @@ setup_overseer() {
     apt install -y yarn sqlite jq nodejs
     dlurl="$(curl -sS https://api.github.com/repos/sct/overseerr/releases/latest | jq .tarball_url -r)"
     wget "$dlurl" -q -O /tmp/overseerr.tar.gz
-    tar --strip-components=1 -C /home/appbox/appbox_installer/overseer -xzvf /tmp/overseerr.tar.gz
-    yarn install --cwd /home/appbox/appbox_installer/overseer
-    yarn --cwd /home/appbox/appbox_installer/overseer build
-    chown -R appbox:appbox /home/appbox/appbox_installer/overseer
+    tar --strip-components=1 -C /home/appbox/appbox_installer/overseerr -xzvf /tmp/overseerr.tar.gz
+    yarn install --cwd /home/appbox/appbox_installer/overseerr
+    NODE_ENV=production yarn --cwd /home/appbox/appbox_installer/overseerr build
+    chown -R appbox:appbox /home/appbox/appbox_installer/overseerr
     RUNNER=$(cat << EOF
 #!/bin/execlineb -P
 
@@ -912,11 +917,16 @@ setup_overseer() {
 fdmove -c 2 1
 
 s6-setuidgid appbox
-cd /home/appbox/appbox_installer/overseer
+
+export NODE_ENV production
+export HOST 127.0.0.1
+export PORT 5055
+
+cd /home/appbox/appbox_installer/overseerr
 /usr/bin/node dist/index.js
 EOF
 )
-    create_service 'overseer'
+    create_service 'overseerr'
     if ! grep -q "overseerr {" /etc/nginx/sites-enabled/default; then
         sed -i '/server_name _/a \
         location /overseerr {\
@@ -948,6 +958,8 @@ EOF
                 sub_filter '\''/site.webmanifest'\'' '\''/$app/site.webmanifest'\'';\
         }' /etc/nginx/sites-enabled/default
     fi
+    pkill -HUP nginx
+    url_output "overseerr"
 }
 
 # setup_deemixrr() {
@@ -1024,7 +1036,7 @@ install_prompt() {
     20) komga
     21) ombiv4
     22) readarr
-    23) overseer
+    23) overseerr
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
@@ -1119,9 +1131,9 @@ install_prompt() {
             echo "Setting up readarr.."
             setup_readarr
             ;;
-        23|overseer)
-            echo "Setting up overseer.."
-            setup_overseer
+        23|overseerr)
+            echo "Setting up overseerr.."
+            setup_overseerr
             ;;
         *) 
             echo "Sorry, that option doesn't exist, please try again!"
