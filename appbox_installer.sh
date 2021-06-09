@@ -340,8 +340,8 @@ setup_lidarr() {
     apt -y install libmediainfo0v5 libchromaprint-tools || true
     cd /home/appbox/appbox_installer
     curl -L -O $( curl -s https://api.github.com/repos/lidarr/Lidarr/releases | grep linux.tar.gz | grep browser_download_url | head -1 | cut -d \" -f 4 )
-    tar -xvzf Lidarr.develop.*.linux.tar.gz
-    rm -f Lidarr.develop.*.linux.tar.gz
+    tar -xvzf Lidarr.*.linux.tar.gz
+    rm -f Lidarr.*.linux.tar.gz
     chown -R appbox:appbox /home/appbox/appbox_installer/Lidarr
     # Generate config
     /bin/su -s /bin/bash -c "/usr/bin/mono --debug /home/appbox/appbox_installer/Lidarr/Lidarr.exe -nobrowser" appbox &
