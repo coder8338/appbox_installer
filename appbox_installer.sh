@@ -1002,6 +1002,9 @@ setup_requestrr() {
     # Need to edit baseurl in config
     sed -i 's@"BaseUrl" : ""@"BaseUrl" : "/requestrr"@g' /home/appbox/appbox_installer/requestrr/config/settings.json
     
+    # Need to chown once more for the configs
+    chown -R appbox:appbox /home/appbox/appbox_installer/requestrr
+    
     RUNNER=$(cat << EOF
 #!/bin/execlineb -P
 
