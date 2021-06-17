@@ -75,9 +75,9 @@ url_output() {
 
 setup_radarr() {
     s6-svc -d /run/s6/services/radarr || true
-	wget https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+    wget https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
     dpkg -i packages-microsoft-prod.deb
-	rm -f packages-microsoft-prod.deb
+    rm -f packages-microsoft-prod.deb
     apt update
     apt -y install dotnet-runtime-3.1 libmediainfo0v5 || true
     cd /home/appbox/appbox_installer
@@ -962,6 +962,62 @@ EOF
     url_output "overseerr"
 }
 
+setup_requestrr() {
+    s6-svc -d /run/s6/services/requestrr || true
+    
+    # Get Version
+    RQRR_DOWNLOAD=requestrr-linux-x64.zip
+    RQRR_URL=https://github.com/darkalfx/requestrr/releases
+    RQRR_VERSION=$(curl -s $RQRR_URL | grep "$RQRR_DOWNLOAD" | grep -Po ".*\/download\/V([0-9\.]+).*" | awk -F'/' '{print $6}' | tr -d 'v' | sort -V | tail -1)
+    
+    
+    mkdir -p /home/appbox/appbox_installer/requestrr
+    cd /home/appbox/appbox_installer/requestrr
+    
+    # Pass on version to wget
+    wget -qN $RQRR_URL/download/$RQRR_VERSION/$RQRR_DOWNLOAD
+    
+    # Unzip
+    unzip -o requestrr*.zip
+    rm -f requestrr*.zip
+    
+    # Move everything one directory up
+    mv /home/appbox/appbox_installer/requestrr/requestrr-linux-x64/* .
+    
+    # Delete old folder
+    rm -rf requestrr-linux-x64
+    
+    # Make the requestrr executable and chown the folder
+    chmod +x /home/appbox/appbox_installer/requestrr/Requestrr.WebApi
+    chown -R appbox:appbox /home/appbox/appbox_installer/requestrr
+    
+    # Generate config
+    cd /home/appbox/appbox_installer/requestrr/
+    ./Requestrr.WebApi &
+    until grep -q 'BaseUrl' /home/appbox/appbox_installer/requestrr/config/settings.json; do
+        sleep 1
+    done
+    pkill -f 'Requestrr.WebApi'
+    
+    # Need to edit baseurl in config
+    sed -i 's@"BaseUrl" : ""@"BaseUrl" : "/requestrr"@g' /home/appbox/appbox_installer/requestrr/config/settings.json
+    
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+s6-setuidgid appbox
+
+cd /home/appbox/appbox_installer/requestrr/
+./Requestrr.WebApi
+EOF
+)
+    create_service 'requestrr'
+    configure_nginx 'requestrr' '4545'
+}
+
 # setup_deemixrr() {
 #     s6-svc -d /run/s6/services/deemixrr || true
 #     wget https://packages.microsoft.com/config/ubuntu/18.04/packages-microsoft-prod.deb -O /tmp/packages-microsoft-prod.deb
@@ -1037,6 +1093,7 @@ install_prompt() {
     21) ombiv4
     22) readarr
     23) overseerr
+    24) requestrr
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
@@ -1134,6 +1191,10 @@ install_prompt() {
         23|overseerr)
             echo "Setting up overseerr.."
             setup_overseerr
+            ;;
+        24|requestrr)
+            echo "Setting up requestrr.."
+            setup_requestrr
             ;;
         *) 
             echo "Sorry, that option doesn't exist, please try again!"
