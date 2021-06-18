@@ -993,8 +993,7 @@ setup_requestrr() {
     # Make the requestrr executable and chown the folder
     chmod +x /home/appbox/appbox_installer/requestrr/Requestrr.WebApi
     chown -R appbox:appbox /home/appbox/appbox_installer/requestrr
-    chown -R appbox:appbox /home/appbox/.config
-        
+    
     # Generate config
     /bin/su -s /bin/bash -c "/home/appbox/appbox_installer/requestrr/Requestrr.WebApi" appbox &
     until grep -q 'BaseUrl' /home/appbox/appbox_installer/requestrr/config/settings.json; do
