@@ -970,7 +970,10 @@ setup_requestrr() {
     RQRR_URL=https://github.com/darkalfx/requestrr/releases
     RQRR_VERSION=$(curl -s $RQRR_URL | grep "$RQRR_DOWNLOAD" | grep -Po ".*\/download\/V([0-9\.]+).*" | awk -F'/' '{print $6}' | tr -d 'v' | sort -V | tail -1)
     
-    
+    if [[ -d /home/appbox/appbox_installer/requestrr ]]; then
+        rm -rf /home/appbox/appbox_installer/requestrr
+    fi
+
     mkdir -p /home/appbox/appbox_installer/requestrr
     cd /home/appbox/appbox_installer/requestrr
     
@@ -990,15 +993,15 @@ setup_requestrr() {
     # Make the requestrr executable and chown the folder
     chmod +x /home/appbox/appbox_installer/requestrr/Requestrr.WebApi
     chown -R appbox:appbox /home/appbox/appbox_installer/requestrr
-    
+    chown -R appbox:appbox /home/appbox/.config
+        
     # Generate config
-    cd /home/appbox/appbox_installer/requestrr/
-    ./Requestrr.WebApi &
+    /bin/su -s /bin/bash -c "/home/appbox/appbox_installer/requestrr/Requestrr.WebApi" appbox &
     until grep -q 'BaseUrl' /home/appbox/appbox_installer/requestrr/config/settings.json; do
         sleep 1
     done
     pkill -f 'Requestrr.WebApi'
-    
+
     # Need to edit baseurl in config
     sed -i 's@"BaseUrl" : ""@"BaseUrl" : "/requestrr"@g' /home/appbox/appbox_installer/requestrr/config/settings.json
     
@@ -1014,7 +1017,7 @@ fdmove -c 2 1
 s6-setuidgid appbox
 
 cd /home/appbox/appbox_installer/requestrr/
-./Requestrr.WebApi
+/home/appbox/appbox_installer/requestrr/Requestrr.WebApi
 EOF
 )
     create_service 'requestrr'
