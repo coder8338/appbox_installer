@@ -4,7 +4,7 @@
 # Just run this on your Ubuntu VNC app via SSH or in the terminal (Applications > Terminal Emulator) using:
 # sudo bash -c "bash <(curl -Ls https://raw.githubusercontent.com/coder8338/appbox_installer/Ubuntu-20.04/appbox_installer.sh)"
 #
-# We do not work for appbox, we're a friendly community helping others out, we will try to keep this as update to date as possible!
+# We do not work for appbox, we're a friendly community helping others out, we will try to keep this as uptodate as possible!
 
 set -e
 set -u
@@ -1214,7 +1214,7 @@ echo -e "\nEnsuring appbox_installer folder exists..."
 mkdir -p /home/appbox/appbox_installer
 echo -e "\nUpdating apt packages..."
 if ! apt update >/dev/null 2>&1; then
-    echo -e "\napt update failed! Please Fix repo issues and try again!"
+    echo -e "\napt update failed! Please fix repo issues and try again!"
     exit
 fi
 until install_prompt ; do : ; done
