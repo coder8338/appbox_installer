@@ -276,6 +276,26 @@ EOF
 
 setup_sabnzbdplus() {
     s6-svc -d /run/s6/services/sabnzbd || true
+    cat << EOF > /etc/lsb-release
+DISTRIB_ID=Ubuntu
+DISTRIB_RELEASE=20.04
+DISTRIB_CODENAME=focal
+DISTRIB_DESCRIPTION="Ubuntu 20.04.1 LTS"
+EOF
+    cat << EOF > /usr/lib/os-release
+NAME="Ubuntu"
+VERSION="20.04.1 LTS (Focal Fossa)"
+ID=ubuntu
+ID_LIKE=debian
+PRETTY_NAME="Ubuntu 20.04.1 LTS"
+VERSION_ID="20.04"
+HOME_URL="https://www.ubuntu.com/"
+SUPPORT_URL="https://help.ubuntu.com/"
+BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
+VERSION_CODENAME=focal
+UBUNTU_CODENAME=focal
+EOF
     add-apt-repository -y ppa:jcfp/ppa
     apt-get install -y sabnzbdplus
     sed -i 's/--daemon//g' /etc/init.d/sabnzbdplus
