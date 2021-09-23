@@ -1151,6 +1151,30 @@ EOF
     create_service 'updatetool'
 }
 
+setup_flood() {
+    s6-svc -d /run/s6/services/flood || true
+    sudo apt-get install -y libcurl4-openssl-dev nodejs npm curl
+    cd /home/appbox/appbox_installer
+    git clone https://github.com/jesec/flood.git
+    chown -R appbox:appbox /home/appbox/appbox_installer/flood
+    cd /home/appbox/appbox_installer/flood
+    npm install --production
+
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+s6-setuidgid appbox
+
+flood --baseuri /flood
+EOF
+)
+    create_service 'flood'
+    configure_nginx 'flood' '3000'
+}
+
 # Add new setups below this line
 
 install_prompt() {
@@ -1181,6 +1205,7 @@ install_prompt() {
     23) overseerr
     24) requestrr
     25) updatetool
+    26) flood
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
@@ -1286,7 +1311,11 @@ install_prompt() {
         25|updatetool)
             echo "Setting up updatetool..."
             setup_updatetool
-            ;;            
+            ;;
+        26|flood)
+            echo "Setting up flood..."
+            setup_flood
+            ;;
         *)
             echo "Sorry, that option doesn't exist, please try again!"
             return 1
