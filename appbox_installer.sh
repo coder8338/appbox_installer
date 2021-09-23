@@ -1153,7 +1153,7 @@ EOF
 
 setup_flood() {
     s6-svc -d /run/s6/services/flood || true
-    sudo apt-get install -y libcurl4-openssl-dev nodejs npm curl
+    sudo apt-get install -y libcurl4-openssl-dev nodejs curl git
     cd /home/appbox/appbox_installer
     git clone https://github.com/jesec/flood.git
     chown -R appbox:appbox /home/appbox/appbox_installer/flood
@@ -1173,6 +1173,40 @@ EOF
 )
     create_service 'flood'
     configure_nginx 'flood' '3000'
+}
+
+setup_tautulli() {
+    s6-svc -d /run/s6/services/tautulli || true
+    sudo apt-get install -y git python3.7 python3.8 python3-setuptools
+    cd /home/appbox/appbox_installer
+    git clone https://github.com/Tautulli/Tautulli.git Tautulli
+    chown -R appbox:appbox /home/appbox/appbox_installer/Tautulli
+    mkdir -p /home/appbox/.config/Tautulli
+
+    # Generate config
+    pkill -f 'Tautulli.py'
+    /bin/su -s /bin/bash -c "/usr/bin/python3.8 /home/appbox/appbox_installer/Tautulli/Tautulli.py --nolaunch" appbox &
+    until grep -q 'http_root' /home/appbox/.config/Tautulli/config.ini; do
+        sleep 1
+    done
+    sleep 5
+    pkill -f 'Tautulli.py'
+    sed -i 's/http_root.*/http_root = \/tautulli/' /home/appbox/.config/Tautulli/config.ini
+    chown -R appbox:appbox /home/appbox/.config/Tautulli
+
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+s6-setuidgid appbox
+
+/usr/bin/python3.8 /home/appbox/appbox_installer/Tautulli/Tautulli.py --config /home/appbox/.config/Tautulli/config.ini --nolaunch
+EOF
+)
+    create_service 'tautulli'
+    configure_nginx 'tautulli' '8181'
 }
 
 # Add new setups below this line
@@ -1206,6 +1240,7 @@ install_prompt() {
     24) requestrr
     25) updatetool
     26) flood
+    27) tautulli
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
@@ -1316,6 +1351,10 @@ install_prompt() {
             echo "Setting up flood..."
             setup_flood
             ;;
+        27|tautulli)
+            echo "Setting up tautulli..."
+            setup_tautulli
+            ;;            
         *)
             echo "Sorry, that option doesn't exist, please try again!"
             return 1
