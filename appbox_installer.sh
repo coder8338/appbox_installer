@@ -1126,99 +1126,99 @@ install_prompt() {
 
     case "$OPTION" in
         1|radarr)
-            echo "Setting up radarr.."
+            echo "Setting up radarr..."
             setup_radarr
             ;;
         2|sonarr)
-            echo "Setting up sonarr.."
+            echo "Setting up sonarr..."
             setup_sonarr
             ;;
         3|sickchill)
-            echo "Setting up sickchill.."
+            echo "Setting up sickchill..."
             setup_sickchill
             ;;
         4|jackett)
-            echo "Setting up jackett.."
+            echo "Setting up jackett..."
             setup_jackett
             ;;
         5|couchpotato)
-            echo "Setting up couchpotato.."
+            echo "Setting up couchpotato..."
             setup_couchpotato
             ;;
         6|nzbget)
-            echo "Setting up nzbget.."
+            echo "Setting up nzbget..."
             setup_nzbget
             ;;
         7|sabnzbdplus)
-            echo "Setting up sabnzbdplus.."
+            echo "Setting up sabnzbdplus..."
             setup_sabnzbdplus
             ;;
         8|ombi)
-            echo "Setting up ombi.."
+            echo "Setting up ombi..."
             setup_ombi
             ;;
         9|lidarr)
-            echo "Setting up lidarr.."
+            echo "Setting up lidarr..."
             setup_lidarr
             ;;
         10|organizr)
-            echo "Setting up organizr.."
+            echo "Setting up organizr..."
             setup_organizr
             ;;
         11|nzbhydra2)
-            echo "Setting up nzbhydra2.."
+            echo "Setting up nzbhydra2..."
             setup_nzbhydra2
             ;;
         12|bazarr)
-            echo "Setting up bazarr.."
+            echo "Setting up bazarr..."
             setup_bazarr
             ;;
         13|flexget)
-            echo "Setting up flexget.."
+            echo "Setting up flexget..."
             setup_flexget
             ;;
         14|filebot)
-            echo "Setting up filebot.."
+            echo "Setting up filebot..."
             setup_filebot
             ;;
         15|synclounge)
-            echo "Setting up synclounge.."
+            echo "Setting up synclounge..."
             setup_synclounge
             ;;
         16|medusa)
-            echo "Setting up medusa.."
+            echo "Setting up medusa..."
             setup_medusa
             ;;
         17|lazylibrarian)
-            echo "Setting up lazylibrarian.."
+            echo "Setting up lazylibrarian..."
             setup_lazylibrarian
             ;;
         18|pyload)
-            echo "Setting up pyload.."
+            echo "Setting up pyload..."
             setup_pyload
             ;;
         19|ngpost)
-            echo "Setting up ngpost.."
+            echo "Setting up ngpost..."
             setup_ngpost
             ;;
         20|komga)
-            echo "Setting up komga.."
+            echo "Setting up komga..."
             setup_komga
             ;;
         21|ombiv4)
-            echo "Setting up ombi v4.."
+            echo "Setting up ombi v4..."
             setup_ombiv4
             ;;
         22|readarr)
-            echo "Setting up readarr.."
+            echo "Setting up readarr..."
             setup_readarr
             ;;
         23|overseerr)
-            echo "Setting up overseerr.."
+            echo "Setting up overseerr..."
             setup_overseerr
             ;;
         24|requestrr)
-            echo "Setting up requestrr.."
+            echo "Setting up requestrr..."
             setup_requestrr
             ;;
         *) 
