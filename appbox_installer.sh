@@ -357,18 +357,19 @@ EOF
 setup_lidarr() {
     s6-svc -d /run/s6/services/lidarr || true
     apt update
-    apt -y install libmediainfo0v5 libchromaprint-tools || true
+    # Based on https://wiki.servarr.com/lidarr/installation#Debian.2FUbuntu
+    apt -y install libmediainfo0v5 curl mediainfo sqlite3 libchromaprint-tools || true
     cd /home/appbox/appbox_installer
-    curl -L -O $( curl -s https://api.github.com/repos/lidarr/Lidarr/releases | grep linux.tar.gz | grep browser_download_url | head -1 | cut -d \" -f 4 )
-    tar -xvzf Lidarr.*.linux.tar.gz
-    rm -f Lidarr.*.linux.tar.gz
+    wget --content-disposition 'http://lidarr.servarr.com/v1/update/master/updatefile?os=linux&runtime=netcore&arch=x64'
+    tar -xvzf Lidarr*.linux*.tar.gz
+    rm -f Lidarr*.linux*.tar.gz
     chown -R appbox:appbox /home/appbox/appbox_installer/Lidarr
     # Generate config
-    /bin/su -s /bin/bash -c "/usr/bin/mono --debug /home/appbox/appbox_installer/Lidarr/Lidarr.exe -nobrowser" appbox &
+    /bin/su -s /bin/bash -c "/home/appbox/appbox_installer/Lidarr/Lidarr -nobrowser -data=/home/appbox/.config/Lidarr/" appbox &
     until grep -q 'UrlBase' /home/appbox/.config/Lidarr/config.xml; do
         sleep 1
     done
-    pkill -f 'Lidarr.exe'
+    pkill -f 'Lidarr'
     sed -i 's@<UrlBase></UrlBase>@<UrlBase>/lidarr</UrlBase>@g' /home/appbox/.config/Lidarr/config.xml
 
     RUNNER=$(cat << EOF
@@ -379,8 +380,7 @@ fdmove -c 2 1
 
 s6-setuidgid appbox
 
-foreground { rm /home/appbox/.config/Lidarr/lidarr.pid }
-/usr/bin/mono --debug /home/appbox/appbox_installer/Lidarr/Lidarr.exe -nobrowser
+/home/appbox/appbox_installer/Lidarr/Lidarr -nobrowser -data=/home/appbox/.config/Lidarr/
 EOF
 )
     create_service 'lidarr'
