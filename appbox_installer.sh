@@ -1098,8 +1098,9 @@ setup_prowlarr() {
     mkdir /home/appbox/appbox_installer/Prowlarr
     chown appbox:appbox /home/appbox/appbox_installer/Prowlarr
     apt install -y curl sqlite3
-    wget -O /tmp/prowlarr.tar.gz --content-disposition 'http://prowlarr.servarr.com/v1/update/develop/updatefile?os=linux&runtime=netcore&arch=x64'
-    tar zxvf /tmp/prowlarr.tar.gz -C /home/appbox/appbox_installer/
+    wget -O /home/appbox/appbox_installer/prowlarr.tar.gz --content-disposition 'http://prowlarr.servarr.com/v1/update/develop/updatefile?os=linux&runtime=netcore&arch=x64'
+    tar -zxf /home/appbox/appbox_installer/prowlarr.tar.gz -C /home/appbox/appbox_installer/
+    rm home/appbox/appbox_installer/prowlarr.tar.gz
     chown -R appbox:appbox /home/appbox/appbox_installer/Prowlarr
     # Generate config
     cd /home/appbox/appbox_installer/Prowlarr
