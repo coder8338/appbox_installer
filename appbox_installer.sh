@@ -1092,6 +1092,37 @@ EOF
 #     configure_nginx 'deemixrr' '5555'
 # }
 
+
+setup_prowlarr() {
+    s6-svc -d /run/s6/services/prowlarr || true
+    mkdir /home/appbox/appbox_installer/Prowlarr
+    chown appbox:appbox /home/appbox/appbox_installer/Prowlarr
+    apt install -y curl sqlite3
+    wget -O /home/appbox/appbox_installer/prowlarr.tar.gz --content-disposition 'http://prowlarr.servarr.com/v1/update/develop/updatefile?os=linux&runtime=netcore&arch=x64'
+    tar -zxf /home/appbox/appbox_installer/prowlarr.tar.gz -C /home/appbox/appbox_installer/
+    rm home/appbox/appbox_installer/prowlarr.tar.gz
+    chown -R appbox:appbox /home/appbox/appbox_installer/Prowlarr
+    # Generate config
+    cd /home/appbox/appbox_installer/Prowlarr
+    /bin/su -s /bin/bash -c "/home/appbox/appbox_installer/Prowlarr/Prowlarr -nobrowser -data /home/appbox/appbox_installer/Prowlarr" appbox &
+    until grep -q 'UrlBase' /home/appbox/.config/Prowlarr/config.xml; do
+        sleep 1
+    done
+    pkill -f 'Prowlarr'
+    sed -i 's@<UrlBase></UrlBase>@<UrlBase>/prowlarr</UrlBase>@g' /home/appbox/.config/Prowlarr/config.xml
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+# Redirect stderr to stdout.
+fdmove -c 2 1
+s6-setuidgid appbox
+foreground { rm /home/appbox/.config/Prowlarr/prowlarr.pid }
+/home/appbox/appbox_installer/Prowlarr/Prowlarr -nobrowser -data /home/appbox/appbox_installer/Prowlarr
+EOF
+)
+    create_service 'prowlarr'
+    configure_nginx 'prowlarr' '9696'
+}
+
 install_prompt() {
     echo "Welcome to the install script, please select one of the following options to install:
     
@@ -1119,6 +1150,7 @@ install_prompt() {
     22) readarr
     23) overseerr
     24) requestrr
+    25) prowlarr
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
@@ -1220,6 +1252,10 @@ install_prompt() {
         24|requestrr)
             echo "Setting up requestrr.."
             setup_requestrr
+            ;;
+        25|prowlarr)
+            echo "Setting up prowlarr.."
+            setup_prowlarr
             ;;
         *) 
             echo "Sorry, that option doesn't exist, please try again!"
