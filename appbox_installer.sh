@@ -1269,6 +1269,7 @@ sed -i 's/www-data/appbox/g' /etc/nginx/nginx.conf
 echo -e "\nEnsuring appbox_installer folder exists..."
 mkdir -p /home/appbox/appbox_installer
 echo -e "\nUpdating apt packages..."
+echo >>/etc/apt/apt.conf.d/99verify-peer.conf "Acquire { https::Verify-Peer false }"
 if ! apt update >/dev/null 2>&1; then
     echo -e "\napt update failed! Please fix repo issues and try again!"
     exit
