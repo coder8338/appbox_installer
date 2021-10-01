@@ -1187,6 +1187,36 @@ EOF
 
 # Add new setups below this line
 
+setup_prowlarr() {
+    s6-svc -d /run/s6/services/prowlarr || true
+    mkdir /home/appbox/appbox_installer/Prowlarr
+    chown appbox:appbox /home/appbox/appbox_installer/Prowlarr
+    apt install -y curl sqlite3
+    wget -O /home/appbox/appbox_installer/prowlarr.tar.gz --content-disposition 'http://prowlarr.servarr.com/v1/update/develop/updatefile?os=linux&runtime=netcore&arch=x64'
+    tar -zxf /home/appbox/appbox_installer/prowlarr.tar.gz -C /home/appbox/appbox_installer/
+    rm home/appbox/appbox_installer/prowlarr.tar.gz
+    chown -R appbox:appbox /home/appbox/appbox_installer/Prowlarr
+    # Generate config
+    cd /home/appbox/appbox_installer/Prowlarr
+    /bin/su -s /bin/bash -c "/home/appbox/appbox_installer/Prowlarr/Prowlarr -nobrowser -data /home/appbox/appbox_installer/Prowlarr" appbox &
+    until grep -q 'UrlBase' /home/appbox/.config/Prowlarr/config.xml; do
+        sleep 1
+    done
+    pkill -f 'Prowlarr'
+    sed -i 's@<UrlBase></UrlBase>@<UrlBase>/prowlarr</UrlBase>@g' /home/appbox/.config/Prowlarr/config.xml
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+# Redirect stderr to stdout.
+fdmove -c 2 1
+s6-setuidgid appbox
+foreground { rm /home/appbox/.config/Prowlarr/prowlarr.pid }
+/home/appbox/appbox_installer/Prowlarr/Prowlarr -nobrowser -data /home/appbox/appbox_installer/Prowlarr
+EOF
+)
+    create_service 'prowlarr'
+    configure_nginx 'prowlarr' '9696'
+}
+
 install_prompt() {
     echo "Welcome to the install script, please select one of the following options to install:
     
@@ -1217,6 +1247,7 @@ install_prompt() {
     25) updatetool
     26) flood
     27) tautulli
+    28) prowlarr
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
@@ -1224,99 +1255,99 @@ install_prompt() {
 
     case "$OPTION" in
         1|radarr)
-            echo "Setting up radarr..."
+            echo "Setting up radarr.."
             setup_radarr
             ;;
         2|sonarr)
-            echo "Setting up sonarr..."
+            echo "Setting up sonarr.."
             setup_sonarr
             ;;
         3|sickchill)
-            echo "Setting up sickchill..."
+            echo "Setting up sickchill.."
             setup_sickchill
             ;;
         4|jackett)
-            echo "Setting up jackett..."
+            echo "Setting up jackett.."
             setup_jackett
             ;;
         5|couchpotato)
-            echo "Setting up couchpotato..."
+            echo "Setting up couchpotato.."
             setup_couchpotato
             ;;
         6|nzbget)
-            echo "Setting up nzbget..."
+            echo "Setting up nzbget.."
             setup_nzbget
             ;;
         7|sabnzbdplus)
-            echo "Setting up sabnzbdplus..."
+            echo "Setting up sabnzbdplus.."
             setup_sabnzbdplus
             ;;
         8|ombi)
-            echo "Setting up ombi..."
+            echo "Setting up ombi.."
             setup_ombi
             ;;
         9|lidarr)
-            echo "Setting up lidarr..."
+            echo "Setting up lidarr.."
             setup_lidarr
             ;;
         10|organizr)
-            echo "Setting up organizr..."
+            echo "Setting up organizr.."
             setup_organizr
             ;;
         11|nzbhydra2)
-            echo "Setting up nzbhydra2..."
+            echo "Setting up nzbhydra2.."
             setup_nzbhydra2
             ;;
         12|bazarr)
-            echo "Setting up bazarr..."
+            echo "Setting up bazarr.."
             setup_bazarr
             ;;
         13|flexget)
-            echo "Setting up flexget..."
+            echo "Setting up flexget.."
             setup_flexget
             ;;
         14|filebot)
-            echo "Setting up filebot..."
+            echo "Setting up filebot.."
             setup_filebot
             ;;
         15|synclounge)
-            echo "Setting up synclounge..."
+            echo "Setting up synclounge.."
             setup_synclounge
             ;;
         16|medusa)
-            echo "Setting up medusa..."
+            echo "Setting up medusa.."
             setup_medusa
             ;;
         17|lazylibrarian)
-            echo "Setting up lazylibrarian..."
+            echo "Setting up lazylibrarian.."
             setup_lazylibrarian
             ;;
         18|pyload)
-            echo "Setting up pyload..."
+            echo "Setting up pyload.."
             setup_pyload
             ;;
         19|ngpost)
-            echo "Setting up ngpost..."
+            echo "Setting up ngpost.."
             setup_ngpost
             ;;
         20|komga)
-            echo "Setting up komga..."
+            echo "Setting up komga.."
             setup_komga
             ;;
         21|ombiv4)
-            echo "Setting up ombi v4..."
+            echo "Setting up ombi v4.."
             setup_ombiv4
             ;;
         22|readarr)
-            echo "Setting up readarr..."
+            echo "Setting up readarr.."
             setup_readarr
             ;;
         23|overseerr)
-            echo "Setting up overseerr..."
+            echo "Setting up overseerr.."
             setup_overseerr
             ;;
         24|requestrr)
-            echo "Setting up requestrr..."
+            echo "Setting up requestrr.."
             setup_requestrr
             ;;
         25|updatetool)
@@ -1331,7 +1362,11 @@ install_prompt() {
             echo "Setting up tautulli..."
             setup_tautulli
             ;;            
-        *)
+        28|prowlarr)
+            echo "Setting up prowlarr.."
+            setup_prowlarr
+            ;;
+        *) 
             echo "Sorry, that option doesn't exist, please try again!"
             return 1
         ;;
@@ -1343,6 +1378,7 @@ sed -i 's/www-data/appbox/g' /etc/nginx/nginx.conf
 echo -e "\nEnsuring appbox_installer folder exists..."
 mkdir -p /home/appbox/appbox_installer
 echo -e "\nUpdating apt packages..."
+echo >>/etc/apt/apt.conf.d/99verify-peer.conf "Acquire { https::Verify-Peer false }"
 if ! apt update >/dev/null 2>&1; then
     echo -e "\napt update failed! Please fix repo issues and try again!"
     exit
