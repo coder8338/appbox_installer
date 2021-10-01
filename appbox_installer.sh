@@ -357,18 +357,19 @@ EOF
 setup_lidarr() {
     s6-svc -d /run/s6/services/lidarr || true
     apt update
-    apt -y install libmediainfo0v5 libchromaprint-tools || true
+    # Based on https://wiki.servarr.com/lidarr/installation#Debian.2FUbuntu
+    apt -y install libmediainfo0v5 curl mediainfo sqlite3 libchromaprint-tools || true
     cd /home/appbox/appbox_installer
-    curl -L -O $( curl -s https://api.github.com/repos/lidarr/Lidarr/releases | grep linux.tar.gz | grep browser_download_url | head -1 | cut -d \" -f 4 )
-    tar -xvzf Lidarr.*.linux.tar.gz
-    rm -f Lidarr.*.linux.tar.gz
+    wget --content-disposition 'http://lidarr.servarr.com/v1/update/master/updatefile?os=linux&runtime=netcore&arch=x64'
+    tar -xvzf Lidarr*.linux*.tar.gz
+    rm -f Lidarr*.linux*.tar.gz
     chown -R appbox:appbox /home/appbox/appbox_installer/Lidarr
     # Generate config
-    /bin/su -s /bin/bash -c "/usr/bin/mono --debug /home/appbox/appbox_installer/Lidarr/Lidarr.exe -nobrowser" appbox &
+    /bin/su -s /bin/bash -c "/home/appbox/appbox_installer/Lidarr/Lidarr -nobrowser -data=/home/appbox/.config/Lidarr/" appbox &
     until grep -q 'UrlBase' /home/appbox/.config/Lidarr/config.xml; do
         sleep 1
     done
-    pkill -f 'Lidarr.exe'
+    pkill -f 'Lidarr'
     sed -i 's@<UrlBase></UrlBase>@<UrlBase>/lidarr</UrlBase>@g' /home/appbox/.config/Lidarr/config.xml
 
     RUNNER=$(cat << EOF
@@ -380,7 +381,7 @@ fdmove -c 2 1
 s6-setuidgid appbox
 
 foreground { rm /home/appbox/.config/Lidarr/lidarr.pid }
-/usr/bin/mono --debug /home/appbox/appbox_installer/Lidarr/Lidarr.exe -nobrowser
+/home/appbox/appbox_installer/Lidarr/Lidarr -nobrowser -data=/home/appbox/.config/Lidarr/
 EOF
 )
     create_service 'lidarr'
@@ -1092,6 +1093,99 @@ EOF
 #     configure_nginx 'deemixrr' '5555'
 # }
 
+# Based on: https://github.com/mynttt/UpdateTool/issues/70
+
+setup_updatetool() {
+    s6-svc -d /run/s6/services/updatetool || true
+    apt install -y libcurl4-openssl-dev bzip2 default-jre
+    cd /home/appbox/appbox_installer
+    mkdir -p /home/appbox/appbox_installer/UpdateTool
+    cd /home/appbox/appbox_installer/UpdateTool
+    curl -L -O $( curl -s https://api.github.com/repos/mynttt/UpdateTool/releases/latest | grep UpdateTool | grep browser_download_url | head -1 | cut -d \" -f 4 )
+    chown -R appbox:appbox /home/appbox/appbox_installer/UpdateTool    
+    chmod +x /home/appbox/appbox_installer/UpdateTool/UpdateTool-1.6.3.jar
+    cat << EOF > /home/appbox/appbox_installer/UpdateTool/runner.sh
+#!/bin/bash
+
+export JAVA="/usr/bin/java"
+export TOOL_JAR="/home/appbox/appbox_installer/UpdateTool/UpdateTool-1.6.3.jar"
+export JVM_MAX_HEAP="-Xmx256m"
+export RUN_EVERY_N_HOURS="12"
+PLEX_DATA_DIR="/APPBOX_DATA/apps/plex.${HOSTNAME}/config/Library/Application Support/Plex Media Server/"
+export PLEX_DATA_DIR
+
+\$JAVA -Xms64m "\${JVM_MAX_HEAP}" -XX:+UseG1GC -XX:MinHeapFreeRatio=15 -XX:MaxHeapFreeRatio=30 -jar "\${TOOL_JAR}" imdb-docker "{schedule=\$RUN_EVERY_N_HOURS}"
+EOF
+    chmod +x /home/appbox/appbox_installer/UpdateTool/runner.sh
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+s6-setuidgid appbox
+cd /home/appbox/appbox_installer/UpdateTool/
+/home/appbox/appbox_installer/UpdateTool/runner.sh
+EOF
+)
+    create_service 'updatetool'
+}
+
+setup_flood() {
+    s6-svc -d /run/s6/services/flood || true
+    curl -sL https://deb.nodesource.com/setup_12.x | bash -
+    curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
+    echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+    apt install -y libcurl4-openssl-dev nodejs curl git
+    cd /home/appbox/appbox_installer
+    git clone https://github.com/jesec/flood.git
+    cd /home/appbox/appbox_installer/flood
+    npm install --global flood
+    chown -R appbox:appbox /home/appbox/appbox_installer/flood
+
+    RUNNER=$(cat << EOF
+#!/usr/bin/with-contenv bash
+
+s6-setuidgid appbox
+
+exec flood --baseuri /flood
+EOF
+)
+    create_service 'flood'
+    configure_nginx 'flood' '3000'
+}
+
+setup_tautulli() {
+    s6-svc -d /run/s6/services/tautulli || true
+    apt install -y git
+    cd /home/appbox/appbox_installer
+    git clone --depth 1 https://github.com/Tautulli/Tautulli.git /home/appbox/appbox_installer/Tautulli
+    chown -R appbox:appbox /home/appbox/appbox_installer/Tautulli
+
+    # Generate config
+    /bin/su -s /bin/bash -c "/usr/bin/python3.8 /home/appbox/appbox_installer/Tautulli/Tautulli.py --nolaunch" appbox &
+    until grep -q 'http_root' /home/appbox/appbox_installer/Tautulli/config.ini; do
+        sleep 1
+    done
+    pkill -f 'Tautulli.py'
+    sed -i 's/http_root.*/http_root = \/tautulli/' /home/appbox/appbox_installer/Tautulli/config.ini
+
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+
+# Redirect stderr to stdout.
+fdmove -c 2 1
+
+s6-setuidgid appbox
+
+/usr/bin/python3.8 /home/appbox/appbox_installer/Tautulli/Tautulli.py --config /home/appbox/appbox_installer/Tautulli/config.ini --nolaunch
+EOF
+)
+    create_service 'tautulli'
+    configure_nginx 'tautulli' '8181'
+}
+
+# Add new setups below this line
 
 setup_prowlarr() {
     s6-svc -d /run/s6/services/prowlarr || true
@@ -1150,7 +1244,10 @@ install_prompt() {
     22) readarr
     23) overseerr
     24) requestrr
-    25) prowlarr
+    25) updatetool
+    26) flood
+    27) tautulli
+    28) prowlarr
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
@@ -1253,7 +1350,19 @@ install_prompt() {
             echo "Setting up requestrr.."
             setup_requestrr
             ;;
-        25|prowlarr)
+        25|updatetool)
+            echo "Setting up updatetool..."
+            setup_updatetool
+            ;;
+        26|flood)
+            echo "Setting up flood..."
+            setup_flood
+            ;;
+        27|tautulli)
+            echo "Setting up tautulli..."
+            setup_tautulli
+            ;;            
+        28|prowlarr)
             echo "Setting up prowlarr.."
             setup_prowlarr
             ;;
