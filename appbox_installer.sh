@@ -1136,7 +1136,7 @@ setup_flood() {
     curl -sL https://deb.nodesource.com/setup_12.x | bash -
     curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
     echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
-    apt-get install -y libcurl4-openssl-dev nodejs curl git
+    apt install -y libcurl4-openssl-dev nodejs curl git
     cd /home/appbox/appbox_installer
     git clone https://github.com/jesec/flood.git
     cd /home/appbox/appbox_installer/flood
@@ -1157,22 +1157,18 @@ EOF
 
 setup_tautulli() {
     s6-svc -d /run/s6/services/tautulli || true
-    sudo apt-get install -y git python3.7 python3.8 python3-setuptools
+    apt install -y git
     cd /home/appbox/appbox_installer
-    git clone https://github.com/Tautulli/Tautulli.git Tautulli
+    git clone --depth 1 https://github.com/Tautulli/Tautulli.git /home/appbox/appbox_installer/Tautulli
     chown -R appbox:appbox /home/appbox/appbox_installer/Tautulli
-    mkdir -p /home/appbox/.config/Tautulli
 
     # Generate config
-    pkill -f 'Tautulli.py'
     /bin/su -s /bin/bash -c "/usr/bin/python3.8 /home/appbox/appbox_installer/Tautulli/Tautulli.py --nolaunch" appbox &
-    until grep -q 'http_root' /home/appbox/.config/Tautulli/config.ini; do
+    until grep -q 'http_root' /home/appbox/appbox_installer/Tautulli/config.ini; do
         sleep 1
     done
-    sleep 5
     pkill -f 'Tautulli.py'
-    sed -i 's/http_root.*/http_root = \/tautulli/' /home/appbox/.config/Tautulli/config.ini
-    chown -R appbox:appbox /home/appbox/.config/Tautulli
+    sed -i 's/http_root.*/http_root = \/tautulli/' /home/appbox/appbox_installer/Tautulli/config.ini
 
     RUNNER=$(cat << EOF
 #!/bin/execlineb -P
@@ -1182,7 +1178,7 @@ fdmove -c 2 1
 
 s6-setuidgid appbox
 
-/usr/bin/python3.8 /home/appbox/appbox_installer/Tautulli/Tautulli.py --config /home/appbox/.config/Tautulli/config.ini --nolaunch
+/usr/bin/python3.8 /home/appbox/appbox_installer/Tautulli/Tautulli.py --config /home/appbox/appbox_installer/Tautulli/config.ini --nolaunch
 EOF
 )
     create_service 'tautulli'
