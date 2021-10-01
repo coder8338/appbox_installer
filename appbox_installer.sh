@@ -380,6 +380,7 @@ fdmove -c 2 1
 
 s6-setuidgid appbox
 
+foreground { rm /home/appbox/.config/Lidarr/lidarr.pid }
 /home/appbox/appbox_installer/Lidarr/Lidarr -nobrowser -data=/home/appbox/.config/Lidarr/
 EOF
 )
@@ -1093,6 +1094,7 @@ EOF
 # }
 
 # Based on: https://github.com/mynttt/UpdateTool/issues/70
+
 setup_updatetool() {
     s6-svc -d /run/s6/services/updatetool || true
     apt install -y libcurl4-openssl-dev bzip2 default-jre
@@ -1101,40 +1103,19 @@ setup_updatetool() {
     cd /home/appbox/appbox_installer/UpdateTool
     curl -L -O $( curl -s https://api.github.com/repos/mynttt/UpdateTool/releases/latest | grep UpdateTool | grep browser_download_url | head -1 | cut -d \" -f 4 )
     chown -R appbox:appbox /home/appbox/appbox_installer/UpdateTool    
-    chmod +x /home/appbox/appbox_installer/UpdateTool/UpdateTool-1.6.3.jar  
-    echo "#!/bin/bash
-    cd /home/appbox/appbox_installer/UpdateTool && ./runner.sh" > /home/appbox/appbox_installer/UpdateTool/run-runner.sh
-    chmod +x /home/appbox/appbox_installer/UpdateTool/run-runner.sh
-    echo "#!/bin/bash
+    chmod +x /home/appbox/appbox_installer/UpdateTool/UpdateTool-1.6.3.jar
+    cat << EOF > /home/appbox/appbox_installer/UpdateTool/runner.sh
+#!/bin/bash
 
-# Must point to a java installation >= java 11
-export JAVA=\"/usr/bin/java\"
-
-# Points to the tool jar file
-export TOOL_JAR=\"/home/appbox/appbox_installer/UpdateTool/UpdateTool-1.6.3.jar\"
-
-# Change to 512m or 1g if tool crashes with out of memory exception
-export JVM_MAX_HEAP=\"-Xmx256m\"
-
-## Run batch processing every hours
-export RUN_EVERY_N_HOURS=\"12\"
-
-# Set environment variables (must be exported for each var): See https://github.com/mynttt/UpdateTool#environment-variables-guide
-
-## REQUIRED: Data dir
-PLEX_DATA_DIR=\"/APPBOX_DATA/apps/plex.${HOSTNAME}/config/Library/Application Support/Plex Media Server/\"
+export JAVA="/usr/bin/java"
+export TOOL_JAR="/home/appbox/appbox_installer/UpdateTool/UpdateTool-1.6.3.jar"
+export JVM_MAX_HEAP="-Xmx256m"
+export RUN_EVERY_N_HOURS="12"
+PLEX_DATA_DIR="/APPBOX_DATA/apps/plex.${HOSTNAME}/config/Library/Application Support/Plex Media Server/"
 export PLEX_DATA_DIR
 
-## Optional: Tmdb api key if exists else remove from script
-#TMDB_API_KEY=\"\"
-#export TMDB_API_KEY
-
-# Add other environment vars that you need in the same manner here
-#TVDB_API_KEY=\"\"
-#export TVDB_API_KEY
-
-\$JAVA -Xms64m \"\${JVM_MAX_HEAP}\" -XX:+UseG1GC -XX:MinHeapFreeRatio=15 -XX:MaxHeapFreeRatio=30 -jar \"\${TOOL_JAR}\" imdb-docker \"{schedule=\$RUN_EVERY_N_HOURS}\"
-" > /home/appbox/appbox_installer/UpdateTool/runner.sh
+\$JAVA -Xms64m "\${JVM_MAX_HEAP}" -XX:+UseG1GC -XX:MinHeapFreeRatio=15 -XX:MaxHeapFreeRatio=30 -jar "\${TOOL_JAR}" imdb-docker "{schedule=\$RUN_EVERY_N_HOURS}"
+EOF
     chmod +x /home/appbox/appbox_installer/UpdateTool/runner.sh
     RUNNER=$(cat << EOF
 #!/bin/execlineb -P
@@ -1143,9 +1124,8 @@ export PLEX_DATA_DIR
 fdmove -c 2 1
 
 s6-setuidgid appbox
-
 cd /home/appbox/appbox_installer/UpdateTool/
-bash runner.sh
+/home/appbox/appbox_installer/UpdateTool/runner.sh
 EOF
 )
     create_service 'updatetool'
