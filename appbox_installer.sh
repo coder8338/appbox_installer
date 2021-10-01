@@ -1133,22 +1133,22 @@ EOF
 
 setup_flood() {
     s6-svc -d /run/s6/services/flood || true
-    sudo apt-get install -y libcurl4-openssl-dev nodejs curl git
+    curl -sL https://deb.nodesource.com/setup_12.x | bash -
+    curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
+    echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+    apt-get install -y libcurl4-openssl-dev nodejs curl git
     cd /home/appbox/appbox_installer
     git clone https://github.com/jesec/flood.git
-    chown -R appbox:appbox /home/appbox/appbox_installer/flood
     cd /home/appbox/appbox_installer/flood
-    npm install --production
+    npm install --global flood
+    chown -R appbox:appbox /home/appbox/appbox_installer/flood
 
     RUNNER=$(cat << EOF
-#!/bin/execlineb -P
-
-# Redirect stderr to stdout.
-fdmove -c 2 1
+#!/usr/bin/with-contenv bash
 
 s6-setuidgid appbox
 
-flood --baseuri /flood
+exec flood --baseuri /flood
 EOF
 )
     create_service 'flood'
