@@ -972,10 +972,10 @@ EOF
                 sub_filter '\''/api/v1'\'' '\''/$app/api/v1'\'';\
                 sub_filter '\''/login/plex/loading'\'' '\''/$app/login/plex/loading'\'';\
                 sub_filter '\''/images/'\'' '\''/$app/images/'\'';\
-                sub_filter '\''/android-'\'' '\''/$app/android-'\'';\
                 sub_filter '\''/apple-'\'' '\''/$app/apple-'\'';\
                 sub_filter '\''/favicon'\'' '\''/$app/favicon'\'';\
                 sub_filter '\''/logo.png'\'' '\''/$app/logo.png'\'';\
+                sub_filter '\''/logo_full.svg'\'' '\''/$app/logo_full.svg'\'';\
                 sub_filter '\''/site.webmanifest'\'' '\''/$app/site.webmanifest'\'';\
         }' /etc/nginx/sites-enabled/default
     fi
