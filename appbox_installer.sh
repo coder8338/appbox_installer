@@ -498,9 +498,11 @@ EOF
 setup_bazarr() {
     s6-svc -d /run/s6/services/bazarr || true
     apt update
-    apt -y install git-core python3-pip python3-distutils || true
-    cd /home/appbox/appbox_installer
-    git clone --depth 1 https://github.com/morpheus65535/bazarr.git
+    apt -y install git-core python3-pip python3-distutils unzip || true
+    mkdir -p /home/appbox/appbox_installer/bazarr
+    wget --content-disposition -O /tmp/bazarr.zip 'https://github.com/morpheus65535/bazarr/releases/latest/download/bazarr.zip'
+    unzip /tmp/bazarr.zip -d /home/appbox/appbox_installer/bazarr
+    rm /tmp/bazarr.zip
     cd /home/appbox/appbox_installer/bazarr
     pip3 install -r requirements.txt
     chown -R appbox:appbox /home/appbox/appbox_installer/bazarr
@@ -509,7 +511,9 @@ setup_bazarr() {
         sleep 1
     done
     pkill -f 'bazarr'
-    sed -i '0,/base_url = /s//base_url = \/bazarr\//' /home/appbox/appbox_installer/bazarr/data/config/config.ini
+    if ! grep -q 'base_url = /bazarr' /home/appbox/appbox_installer/bazarr/data/config/config.ini; then
+        sed -i '0,/base_url = /s//base_url = \/bazarr/' /home/appbox/appbox_installer/bazarr/data/config/config.ini
+    fi
 
     RUNNER=$(cat << EOF
 #!/bin/execlineb -P
