@@ -282,20 +282,6 @@ DISTRIB_RELEASE=20.04
 DISTRIB_CODENAME=focal
 DISTRIB_DESCRIPTION="Ubuntu 20.04.1 LTS"
 EOF
-    cat << EOF > /usr/lib/os-release
-NAME="Ubuntu"
-VERSION="20.04.1 LTS (Focal Fossa)"
-ID=ubuntu
-ID_LIKE=debian
-PRETTY_NAME="Ubuntu 20.04.1 LTS"
-VERSION_ID="20.04"
-HOME_URL="https://www.ubuntu.com/"
-SUPPORT_URL="https://help.ubuntu.com/"
-BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
-PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
-VERSION_CODENAME=focal
-UBUNTU_CODENAME=focal
-EOF
     add-apt-repository -y ppa:jcfp/ppa
     apt-get install -y sabnzbdplus
     sed -i 's/--daemon//g' /etc/init.d/sabnzbdplus
@@ -471,12 +457,12 @@ EOF
 setup_nzbhydra2() {
     s6-svc -d /run/s6/services/nzbhydra2 || true
     mkdir -p /var/cache/oracle-jdk11-installer-local
-    wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/jdk-11.0.10_linux-x64_bin.tar.gz https://github.com/coder8338/appbox_installer/releases/download/bin/asd8923ehsa.tar.gz
-    add-apt-repository -y ppa:linuxuprising/java
-    apt update
+    wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/jdk-11.0.12_linux-x64_bin.tar.gz https://github.com/coder8338/appbox_installer/releases/download/bin/asd8923ehsa.tar.gz
+    wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/oracle-java11-installer-local_11.0.12-1.linuxuprising0_amd64.deb https://github.com/coder8338/appbox_installer/releases/download/bin/oracle-java11-installer-local_11.0.12-1.linuxuprising0_amd64.deb
     echo debconf shared/accepted-oracle-license-v1-2 select true | debconf-set-selections
     echo debconf shared/accepted-oracle-license-v1-2 seen true | debconf-set-selections
-    apt-get install -y oracle-java11-installer-local libchromaprint-tools || true
+    apt-get install -y libchromaprint-tools || true
+    dpkg -i /var/cache/oracle-jdk11-installer-local/jdk-11.0.12_linux-x64_bin.tar.gz || true
     sed -i 's/tar xzf $FILENAME/tar xzf $FILENAME --no-same-owner/g' /var/lib/dpkg/info/oracle-java11-installer-local.postinst
     dpkg --configure -a
     mkdir -p /home/appbox/appbox_installer/nzbhydra2
@@ -606,12 +592,12 @@ EOF
 
 setup_filebot() {
     mkdir -p /var/cache/oracle-jdk11-installer-local
-    wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/jdk-11.0.10_linux-x64_bin.tar.gz https://github.com/coder8338/appbox_installer/releases/download/bin/asd8923ehsa.tar.gz
-    add-apt-repository -y ppa:linuxuprising/java
-    apt update
+    wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/jdk-11.0.12_linux-x64_bin.tar.gz https://github.com/coder8338/appbox_installer/releases/download/bin/asd8923ehsa.tar.gz
+    wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/oracle-java11-installer-local_11.0.12-1.linuxuprising0_amd64.deb https://github.com/coder8338/appbox_installer/releases/download/bin/oracle-java11-installer-local_11.0.12-1.linuxuprising0_amd64.deb
     echo debconf shared/accepted-oracle-license-v1-2 select true | debconf-set-selections
     echo debconf shared/accepted-oracle-license-v1-2 seen true | debconf-set-selections
-    apt-get install -y oracle-java11-installer-local libchromaprint-tools || true
+    apt-get install -y libchromaprint-tools || true
+    dpkg -i /var/cache/oracle-jdk11-installer-local/oracle-java11-installer-local_11.0.12-1.linuxuprising0_amd64.deb || true
     sed -i 's/tar xzf $FILENAME/tar xzf $FILENAME --no-same-owner/g' /var/lib/dpkg/info/oracle-java11-installer-local.postinst
     dpkg --configure -a
     mkdir /home/appbox/appbox_installer/filebot && cd /home/appbox/appbox_installer/filebot
@@ -802,12 +788,12 @@ EOF
 setup_komga() {
     s6-svc -d /run/s6/services/komga || true
     mkdir -p /var/cache/oracle-jdk11-installer-local
-    wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/jdk-11.0.10_linux-x64_bin.tar.gz https://github.com/coder8338/appbox_installer/releases/download/bin/asd8923ehsa.tar.gz
-    add-apt-repository -y ppa:linuxuprising/java
-    apt update
+    wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/jdk-11.0.12_linux-x64_bin.tar.gz https://github.com/coder8338/appbox_installer/releases/download/bin/asd8923ehsa.tar.gz
+    wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/oracle-java11-installer-local_11.0.12-1.linuxuprising0_amd64.deb https://github.com/coder8338/appbox_installer/releases/download/bin/oracle-java11-installer-local_11.0.12-1.linuxuprising0_amd64.deb
     echo debconf shared/accepted-oracle-license-v1-2 select true | debconf-set-selections
     echo debconf shared/accepted-oracle-license-v1-2 seen true | debconf-set-selections
-    apt-get install -y oracle-java11-installer-local || true
+    apt-get install -y libchromaprint-tools || true
+    dpkg -i /var/cache/oracle-jdk11-installer-local/oracle-java11-installer-local_11.0.12-1.linuxuprising0_amd64.deb || true
     sed -i 's/tar xzf $FILENAME/tar xzf $FILENAME --no-same-owner/g' /var/lib/dpkg/info/oracle-java11-installer-local.postinst
     dpkg --configure -a
     mkdir /home/appbox/appbox_installer/komga
@@ -817,14 +803,11 @@ setup_komga() {
 
     FILENAME=$(ls -la /home/appbox/appbox_installer/komga | grep jar | awk '{print $9}')
     RUNNER=$(cat << EOF
-#!/bin/execlineb -P
-
-# Redirect stderr to stdout.
-fdmove -c 2 1
+#!/usr/bin/with-contenv bash
 
 s6-setuidgid appbox
 
-/usr/bin/java -jar /home/appbox/appbox_installer/komga/${FILENAME} --server.servlet.context-path="/komga" --server.port=8443
+/usr/bin/java -jar /home/appbox/appbox_installer/komga/${FILENAME} --server.servlet.context-path="/komga" --server.port=8443 2>&1
 EOF
 )
     create_service 'komga'
@@ -1101,7 +1084,15 @@ EOF
 
 setup_updatetool() {
     s6-svc -d /run/s6/services/updatetool || true
-    apt install -y libcurl4-openssl-dev bzip2 default-jre
+    apt install -y libcurl4-openssl-dev bzip2
+    wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/jdk-11.0.12_linux-x64_bin.tar.gz https://github.com/coder8338/appbox_installer/releases/download/bin/asd8923ehsa.tar.gz
+    wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/oracle-java11-installer-local_11.0.12-1.linuxuprising0_amd64.deb https://github.com/coder8338/appbox_installer/releases/download/bin/oracle-java11-installer-local_11.0.12-1.linuxuprising0_amd64.deb
+    echo debconf shared/accepted-oracle-license-v1-2 select true | debconf-set-selections
+    echo debconf shared/accepted-oracle-license-v1-2 seen true | debconf-set-selections
+    apt-get install -y libchromaprint-tools || true
+    dpkg -i /var/cache/oracle-jdk11-installer-local/oracle-java11-installer-local_11.0.12-1.linuxuprising0_amd64.deb || true
+    sed -i 's/tar xzf $FILENAME/tar xzf $FILENAME --no-same-owner/g' /var/lib/dpkg/info/oracle-java11-installer-local.postinst
+    dpkg --configure -a
     cd /home/appbox/appbox_installer
     mkdir -p /home/appbox/appbox_installer/UpdateTool
     cd /home/appbox/appbox_installer/UpdateTool
@@ -1382,6 +1373,20 @@ install_prompt() {
 }
 
 run_as_root
+cat << EOF > /usr/lib/os-release
+NAME="Ubuntu"
+VERSION="20.04.1 LTS (Focal Fossa)"
+ID=ubuntu
+ID_LIKE=debian
+PRETTY_NAME="Ubuntu 20.04.1 LTS"
+VERSION_ID="20.04"
+HOME_URL="https://www.ubuntu.com/"
+SUPPORT_URL="https://help.ubuntu.com/"
+BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
+VERSION_CODENAME=focal
+UBUNTU_CODENAME=focal
+EOF
 sed -i 's/www-data/appbox/g' /etc/nginx/nginx.conf
 echo -e "\nEnsuring appbox_installer folder exists..."
 mkdir -p /home/appbox/appbox_installer
