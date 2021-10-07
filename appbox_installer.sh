@@ -920,7 +920,7 @@ setup_overseerr() {
     s6-svc -d /run/s6/services/overseerr || true
     mkdir /home/appbox/appbox_installer/overseerr
     chown appbox:appbox /home/appbox/appbox_installer/overseerr
-    curl -sL https://deb.nodesource.com/setup_12.x | bash -
+    curl -sL https://deb.nodesource.com/setup_14.x | bash -
     curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
     echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
     apt update
@@ -928,8 +928,11 @@ setup_overseerr() {
     dlurl="$(curl -sS https://api.github.com/repos/sct/overseerr/releases/latest | jq .tarball_url -r)"
     wget "$dlurl" -q -O /tmp/overseerr.tar.gz
     tar --strip-components=1 -C /home/appbox/appbox_installer/overseerr -xzvf /tmp/overseerr.tar.gz
-    yarn install --cwd /home/appbox/appbox_installer/overseerr
-    NODE_ENV=production yarn --cwd /home/appbox/appbox_installer/overseerr build
+    export NODE_OPTIONS=--max_old_space_size=2048 && \
+    yarn --frozen-lockfile --network-timeout 1000000 --cwd /home/appbox/appbox_installer/overseerr && \
+    yarn --cwd /home/appbox/appbox_installer/overseerr build && \
+    yarn install --production --ignore-scripts --prefer-offline --cwd /home/appbox/appbox_installer/overseerr && \
+    yarn cache clean --cwd /home/appbox/appbox_installer/overseerr
     chown -R appbox:appbox /home/appbox/appbox_installer/overseerr
     RUNNER=$(cat << EOF
 #!/bin/execlineb -P
@@ -944,7 +947,7 @@ export HOST 127.0.0.1
 export PORT 5055
 
 cd /home/appbox/appbox_installer/overseerr
-/usr/bin/node dist/index.js
+/usr/bin/yarn start
 EOF
 )
     create_service 'overseerr'
@@ -972,10 +975,11 @@ EOF
                 sub_filter '\''/api/v1'\'' '\''/$app/api/v1'\'';\
                 sub_filter '\''/login/plex/loading'\'' '\''/$app/login/plex/loading'\'';\
                 sub_filter '\''/images/'\'' '\''/$app/images/'\'';\
-                sub_filter '\''/android-'\'' '\''/$app/android-'\'';\
                 sub_filter '\''/apple-'\'' '\''/$app/apple-'\'';\
                 sub_filter '\''/favicon'\'' '\''/$app/favicon'\'';\
                 sub_filter '\''/logo.png'\'' '\''/$app/logo.png'\'';\
+                sub_filter '\''/logo_full.svg'\'' '\''/$app/logo_full.svg'\'';\
+                sub_filter '\''/logo_stacked.svg'\'' '\''/$app/logo_stacked.svg'\'';\
                 sub_filter '\''/site.webmanifest'\'' '\''/$app/site.webmanifest'\'';\
         }' /etc/nginx/sites-enabled/default
     fi
