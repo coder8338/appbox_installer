@@ -1115,7 +1115,7 @@ export JAVA="/usr/bin/java"
 export TOOL_JAR="/home/appbox/appbox_installer/UpdateTool/UpdateTool-1.6.3.jar"
 export JVM_MAX_HEAP="-Xmx256m"
 export RUN_EVERY_N_HOURS="12"
-PLEX_DATA_DIR="/APPBOX_DATA/apps/plex.${PLEXHOST}/config/Library/Application Support/Plex Media Server/"
+PLEX_DATA_DIR="/APPBOX_DATA/apps/${PLEXHOST}/config/Library/Application Support/Plex Media Server/"
 export PLEX_DATA_DIR
 
 \$JAVA -Xms64m "\${JVM_MAX_HEAP}" -XX:+UseG1GC -XX:MinHeapFreeRatio=15 -XX:MaxHeapFreeRatio=30 -jar "\${TOOL_JAR}" imdb-docker "{schedule=\$RUN_EVERY_N_HOURS}"
