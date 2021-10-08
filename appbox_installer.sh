@@ -32,6 +32,11 @@ EOF
     chmod +x /etc/services.d/${NAME}/run
     cp -R /etc/services.d/${NAME} /var/run/s6/services
     kill -HUP 1
+    until [ -d "/run/s6/services/${NAME}/supervise/" ]; do
+        echo
+        echo "Waiting for s6 to recognize service..."
+        sleep 1
+    done
     s6-svc -u /run/s6/services/${NAME}
 }
 
@@ -461,7 +466,7 @@ setup_nzbhydra2() {
     wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/oracle-java11-installer-local_11.0.12-1.linuxuprising0_amd64.deb https://github.com/coder8338/appbox_installer/releases/download/bin/oracle-java11-installer-local_11.0.12-1.linuxuprising0_amd64.deb
     echo debconf shared/accepted-oracle-license-v1-2 select true | debconf-set-selections
     echo debconf shared/accepted-oracle-license-v1-2 seen true | debconf-set-selections
-    apt-get install -y libchromaprint-tools || true
+    apt-get install -y libchromaprint-tools java-common || true
     dpkg -i /var/cache/oracle-jdk11-installer-local/jdk-11.0.12_linux-x64_bin.tar.gz || true
     sed -i 's/tar xzf $FILENAME/tar xzf $FILENAME --no-same-owner/g' /var/lib/dpkg/info/oracle-java11-installer-local.postinst
     dpkg --configure -a
@@ -600,7 +605,7 @@ setup_filebot() {
     wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/oracle-java11-installer-local_11.0.12-1.linuxuprising0_amd64.deb https://github.com/coder8338/appbox_installer/releases/download/bin/oracle-java11-installer-local_11.0.12-1.linuxuprising0_amd64.deb
     echo debconf shared/accepted-oracle-license-v1-2 select true | debconf-set-selections
     echo debconf shared/accepted-oracle-license-v1-2 seen true | debconf-set-selections
-    apt-get install -y libchromaprint-tools || true
+    apt-get install -y libchromaprint-tools java-common || true
     dpkg -i /var/cache/oracle-jdk11-installer-local/oracle-java11-installer-local_11.0.12-1.linuxuprising0_amd64.deb || true
     sed -i 's/tar xzf $FILENAME/tar xzf $FILENAME --no-same-owner/g' /var/lib/dpkg/info/oracle-java11-installer-local.postinst
     dpkg --configure -a
@@ -796,7 +801,7 @@ setup_komga() {
     wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/oracle-java11-installer-local_11.0.12-1.linuxuprising0_amd64.deb https://github.com/coder8338/appbox_installer/releases/download/bin/oracle-java11-installer-local_11.0.12-1.linuxuprising0_amd64.deb
     echo debconf shared/accepted-oracle-license-v1-2 select true | debconf-set-selections
     echo debconf shared/accepted-oracle-license-v1-2 seen true | debconf-set-selections
-    apt-get install -y libchromaprint-tools || true
+    apt-get install -y libchromaprint-tools java-common || true
     dpkg -i /var/cache/oracle-jdk11-installer-local/oracle-java11-installer-local_11.0.12-1.linuxuprising0_amd64.deb || true
     sed -i 's/tar xzf $FILENAME/tar xzf $FILENAME --no-same-owner/g' /var/lib/dpkg/info/oracle-java11-installer-local.postinst
     dpkg --configure -a
@@ -1088,7 +1093,7 @@ EOF
 
 setup_updatetool() {
     s6-svc -d /run/s6/services/updatetool || true
-    apt install -y libcurl4-openssl-dev bzip2
+    apt install -y libcurl4-openssl-dev bzip2 java-common
     mkdir -p /var/cache/oracle-jdk11-installer-local/
     wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/jdk-11.0.12_linux-x64_bin.tar.gz https://github.com/coder8338/appbox_installer/releases/download/bin/asd8923ehsa.tar.gz
     wget -c --no-cookies --no-check-certificate -O /var/cache/oracle-jdk11-installer-local/oracle-java11-installer-local_11.0.12-1.linuxuprising0_amd64.deb https://github.com/coder8338/appbox_installer/releases/download/bin/oracle-java11-installer-local_11.0.12-1.linuxuprising0_amd64.deb
