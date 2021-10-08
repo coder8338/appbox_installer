@@ -1226,6 +1226,24 @@ EOF
     configure_nginx 'prowlarr' '9696'
 }
 
+setup_unpackerr() {
+    s6-svc -d /run/s6/services/unpackerr || true
+    curl -s https://golift.io/repo.sh | bash -s - unpackerr || true
+    :> /var/lib/dpkg/info/unpackerr.postinst
+    dpkg --configure -a
+
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+# Redirect stderr to stdout.
+fdmove -c 2 1
+s6-setuidgid appbox
+cd /tmp
+/usr/bin/unpackerr
+EOF
+)
+    create_service 'unpackerr'
+}
+
 install_prompt() {
     echo "Welcome to the install script, please select one of the following options to install:
     
@@ -1257,6 +1275,7 @@ install_prompt() {
     26) flood
     27) tautulli
     28) prowlarr
+    29) unpackerr
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
@@ -1374,6 +1393,10 @@ install_prompt() {
         28|prowlarr)
             echo "Setting up prowlarr.."
             setup_prowlarr
+            ;;
+        29|unpackerr)
+            echo "Setting up unpackerr.."
+            setup_unpackerr
             ;;
         *) 
             echo "Sorry, that option doesn't exist, please try again!"
