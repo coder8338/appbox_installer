@@ -1177,7 +1177,10 @@ setup_tautulli() {
         sleep 1
     done
     pkill -f 'Tautulli.py'
-    sed -i 's/http_root.*/http_root = \/tautulli/' /home/appbox/appbox_installer/Tautulli/config.ini
+    until grep -q 'http_root = "/tautulli"' /home/appbox/appbox_installer/Tautulli/config.ini; do
+        sleep 1
+        sed -i 's/http_root.*/http_root = "\/tautulli"/' /home/appbox/appbox_installer/Tautulli/config.ini
+    done
 
     RUNNER=$(cat << EOF
 #!/bin/execlineb -P
@@ -1193,8 +1196,6 @@ EOF
     create_service 'tautulli'
     configure_nginx 'tautulli' '8181'
 }
-
-# Add new setups below this line
 
 setup_prowlarr() {
     s6-svc -d /run/s6/services/prowlarr || true
