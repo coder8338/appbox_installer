@@ -1274,6 +1274,26 @@ EOF
     configure_nginx 'mylar' '8090'
 }
 
+setup_flaresolverr() {
+  s6-svc -d /run/s6/services/flaresolverr || true
+  cd /home/appbox/appbox_installer/
+  curl -L -O $( curl -s https://api.github.com/repos/FlareSolverr/FlareSolverr/releases/latest | grep linux | grep browser_download_url | head -1 | cut -d \" -f 4 )
+  unzip flaresolverr-*.zip
+  rm -f flaresolverr-*.zip
+  chown -R appbox:appbox /home/appbox/appbox_installer/flaresolverr
+
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+# Redirect stderr to stdout.
+fdmove -c 2 1
+s6-setuidgid appbox
+cd /home/appbox/appbox_installer/flaresolverr
+./flaresolverr
+EOF
+)
+    create_service 'flaresolverr'
+}
+
 install_prompt() {
     echo "Welcome to the install script, please select one of the following options to install:
     
@@ -1307,6 +1327,7 @@ install_prompt() {
     28) prowlarr
     29) unpackerr
     30) mylar
+    31) flaresolverr
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
@@ -1432,6 +1453,10 @@ install_prompt() {
         30|mylar)
             echo "Setting up mylar.."
             setup_mylar
+            ;;
+        31|flaresolverr)
+            echo "Setting up flaresolverr.."
+            setup_flaresolverr
             ;;
          *) 
             echo "Sorry, that option doesn't exist, please try again!"
