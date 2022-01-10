@@ -1245,6 +1245,55 @@ EOF
     create_service 'unpackerr'
 }
 
+setup_mylar() {
+  s6-svc -d /run/s6/services/mylar || true
+  apt update
+  apt -y install git-core python3-pip python3-distutils || true
+  cd /home/appbox/appbox_installer
+  git clone --depth 1 https://github.com/mylar3/mylar3.git
+  cd /home/appbox/appbox_installer/mylar3
+  pip3 install -r requirements.txt
+  chown -R appbox:appbox /home/appbox/appbox_installer/mylar3
+  /bin/su -s /bin/bash -c "python3 /home/appbox/appbox_installer/mylar3/Mylar.py" appbox &
+  until grep -q 'http_root' /home/appbox/appbox_installer/mylar3/config.ini; do
+      sleep 1
+  done
+  pkill -f 'mylar'
+  sed -i '0,/http_root = /s//http_root = \/mylar\//' /home/appbox/appbox_installer/mylar3/config.ini
+
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+# Redirect stderr to stdout.
+fdmove -c 2 1
+s6-setuidgid appbox
+foreground { rm /home/appbox/.config/Mylar/mylar.pid }
+python3 /home/appbox/appbox_installer/mylar3/Mylar.py
+EOF
+)
+    create_service 'mylar'
+    configure_nginx 'mylar' '8090'
+}
+
+setup_flaresolverr() {
+  s6-svc -d /run/s6/services/flaresolverr || true
+  cd /home/appbox/appbox_installer/
+  curl -L -O $( curl -s https://api.github.com/repos/FlareSolverr/FlareSolverr/releases/latest | grep linux | grep browser_download_url | head -1 | cut -d \" -f 4 )
+  unzip flaresolverr-*.zip
+  rm -f flaresolverr-*.zip
+  chown -R appbox:appbox /home/appbox/appbox_installer/flaresolverr
+
+    RUNNER=$(cat << EOF
+#!/bin/execlineb -P
+# Redirect stderr to stdout.
+fdmove -c 2 1
+s6-setuidgid appbox
+cd /home/appbox/appbox_installer/flaresolverr
+./flaresolverr
+EOF
+)
+    create_service 'flaresolverr'
+}
+
 install_prompt() {
     echo "Welcome to the install script, please select one of the following options to install:
     
@@ -1277,6 +1326,8 @@ install_prompt() {
     27) tautulli
     28) prowlarr
     29) unpackerr
+    30) mylar
+    31) flaresolverr
     "
     echo -n "Enter the option and press [ENTER]: "
     read OPTION
@@ -1399,7 +1450,15 @@ install_prompt() {
             echo "Setting up unpackerr.."
             setup_unpackerr
             ;;
-        *) 
+        30|mylar)
+            echo "Setting up mylar.."
+            setup_mylar
+            ;;
+        31|flaresolverr)
+            echo "Setting up flaresolverr.."
+            setup_flaresolverr
+            ;;
+         *) 
             echo "Sorry, that option doesn't exist, please try again!"
             return 1
         ;;
