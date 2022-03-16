@@ -132,6 +132,7 @@ setup_sonarr() {
     sleep 5
     pkill -f 'Sonarr.exe'
     sed -i 's@<UrlBase></UrlBase>@<UrlBase>/sonarr</UrlBase>@g' /home/appbox/.config/Sonarr/config.xml
+    sed -i 's/127.0.0.1/*/g' /home/appbox/.config/Sonarr/config.xml
 RUNNER=$(cat << EOF
 #!/bin/execlineb -P
 
