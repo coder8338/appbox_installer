@@ -1482,6 +1482,8 @@ VERSION_CODENAME=focal
 UBUNTU_CODENAME=focal
 EOF
 sed -i 's/www-data/appbox/g' /etc/nginx/nginx.conf
+echo -e "\nUpdating mono certs..."
+cert-sync --quiet /etc/ssl/certs/ca-certificates.crt
 echo -e "\nEnsuring appbox_installer folder exists..."
 mkdir -p /home/appbox/appbox_installer
 echo -e "\nUpdating apt packages..."
