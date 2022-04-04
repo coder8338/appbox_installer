@@ -1,3 +1,6 @@
+## NO LONGER MAINTAINED
+This installer is no longer being maintained, please see the new method for installing apps here: https://github.com/coder8338/appbox_swizzin_installer
+
 # New version
 This is the new version for Ubuntu 20.04. If you want the installer for Ubuntu 18.04 [click here](https://github.com/coder8338/appbox_installer/tree/Ubuntu-18.04)
 
