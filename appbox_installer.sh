@@ -922,10 +922,10 @@ setup_overseerr() {
     wget "$dlurl" -q -O /tmp/overseerr.tar.gz
     tar --strip-components=1 -C /home/appbox/appbox_installer/overseerr -xzvf /tmp/overseerr.tar.gz
     export NODE_OPTIONS=--max_old_space_size=2048 && \
-    yarn --frozen-lockfile --network-timeout 1000000 --cwd /home/appbox/appbox_installer/overseerr && \
+    CYPRESS_INSTALL_BINARY=0 yarn install --frozen-lockfile --network-timeout 1000000 --cwd /home/appbox/appbox_installer/overseerr && \
     yarn --cwd /home/appbox/appbox_installer/overseerr build && \
     yarn install --production --ignore-scripts --prefer-offline --cwd /home/appbox/appbox_installer/overseerr && \
-    yarn cache clean --cwd /home/appbox/appbox_installer/overseerr
+    rm -rf /home/appbox/appbox_installer/overseerr/src /home/appbox/appbox_installer/overseerr/server /home/appbox/appbox_installer/overseerr/.next/cache 
     chown -R appbox:appbox /home/appbox/appbox_installer/overseerr
     RUNNER=$(cat << EOF
 #!/bin/execlineb -P
@@ -964,6 +964,7 @@ EOF
                 sub_filter '\''href="/"'\'' '\''href="/$app"'\'';\
                 sub_filter '\''href="/login"'\'' '\''href="/$app/login"'\'';\
                 sub_filter '\''href:"/"'\'' '\''href:"/$app"'\'';\
+                sub_filter '\''\/_next'\'' '\''\/$app\/_next'\'';
                 sub_filter '\''/_next'\'' '\''/$app/_next'\'';\
                 sub_filter '\''/api/v1'\'' '\''/$app/api/v1'\'';\
                 sub_filter '\''/login/plex/loading'\'' '\''/$app/login/plex/loading'\'';\
